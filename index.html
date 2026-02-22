@@ -705,6 +705,21 @@
             font-family: inherit; cursor: pointer; transition: all .2s; text-align: left;
         }
         .sidebar-logout-btn:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.05); }
+
+        /* ── 이름 설정 팝업 ── */
+        .set-name-overlay {
+            position: fixed; inset: 0; z-index: 8000;
+            background: rgba(0,0,0,0.35);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .set-name-overlay.hidden { display: none; }
+        .set-name-card {
+            background: #fff; border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 32px 28px; width: 100%; max-width: 340px;
+        }
+        .set-name-card .auth-title { margin-bottom: 6px; }
+        .set-name-card .auth-sub   { margin-bottom: 20px; }
     </style>
 </head>
 <body>
@@ -750,6 +765,23 @@
             </div>
             <button class="auth-btn" onclick="doSignup()">Create Account</button>
             <div class="auth-switch">Already have an account? <span onclick="toggleAuthForm()">Sign In</span></div>
+        </div>
+    </div>
+</div>
+
+<!-- 이름 설정 팝업: 이름 없는 기존 계정 로그인 시 표시 -->
+<div class="set-name-overlay hidden" id="setNameOverlay">
+    <div class="set-name-card">
+        <div class="auth-title">What's your name?</div>
+        <div class="auth-sub">Add your name to personalize your experience</div>
+        <div id="setNameError" class="auth-error"></div>
+        <div class="auth-field">
+            <label>FIRST NAME</label>
+            <input type="text" id="setNameInput" placeholder="Your first name" onkeydown="if(event.key==='Enter') saveUserName()">
+        </div>
+        <button class="auth-btn" onclick="saveUserName()">Save Name</button>
+        <div class="auth-switch" style="margin-top:12px">
+            <span onclick="dismissSetName()">Skip for now</span>
         </div>
     </div>
 </div>
@@ -2154,6 +2186,35 @@ function doLogout() {
     auth.signOut();
 }
 
+// 이름 저장 (기존 계정용)
+function saveUserName() {
+    const name = document.getElementById('setNameInput').value.trim();
+    const errEl = document.getElementById('setNameError');
+    errEl.classList.remove('show');
+
+    if (!name) {
+        errEl.textContent = 'Please enter your first name.';
+        errEl.classList.add('show');
+        return;
+    }
+
+    auth.currentUser.updateProfile({ displayName: name })
+        .then(() => {
+            // 인사말 즉시 업데이트
+            renderGreeting(name.split(' ')[0]);
+            document.getElementById('setNameOverlay').classList.add('hidden');
+        })
+        .catch(() => {
+            errEl.textContent = 'Something went wrong. Please try again.';
+            errEl.classList.add('show');
+        });
+}
+
+// 이름 입력 건너뛰기
+function dismissSetName() {
+    document.getElementById('setNameOverlay').classList.add('hidden');
+}
+
 /* ── 인증 상태 감지: 로그인/로그아웃 시 자동 실행 ── */
 auth.onAuthStateChanged(async (user) => {
     if (user) {
@@ -2166,6 +2227,11 @@ auth.onAuthStateChanged(async (user) => {
         // 로그인한 사용자 이름으로 인사말 업데이트 (이름이 없으면 빈 인사말)
         const firstName = user.displayName ? user.displayName.split(' ')[0] : '';
         renderGreeting(firstName);
+
+        // 이름이 없는 기존 계정이면 이름 설정 팝업 표시
+        if (!user.displayName) {
+            document.getElementById('setNameOverlay').classList.remove('hidden');
+        }
 
         // 로그인 모달 숨기기
         document.getElementById('authOverlay').classList.add('hidden');
