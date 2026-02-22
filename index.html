@@ -1,0 +1,2181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Momentum — Personal Productivity</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary:        #7c6ff8;
+            --primary-light:  #a89cf8;
+            --primary-dark:   #6358e8;
+            --primary-bg:     rgba(124,111,248,.1);
+            --primary-glow:   rgba(124,111,248,.25);
+            --green:          #10b981;
+            --green-light:    #34d399;
+            --amber:          #f59e0b;
+            --red:            #ef4444;
+            --bg:             #f0eef8;
+            --card:           #ffffff;
+            --sidebar-bg:     #ffffff;
+            --text:           #1e293b;
+            --muted:          #8892a4;
+            --border:         #e8e3f4;
+            --shadow-sm:      0 2px 10px rgba(124,111,248,.07), 0 1px 3px rgba(0,0,0,.04);
+            --shadow:         0 8px 24px rgba(124,111,248,.11), 0 2px 8px rgba(0,0,0,.05);
+            --shadow-lg:      0 20px 48px rgba(124,111,248,.15), 0 4px 16px rgba(0,0,0,.07);
+            --radius-sm:      10px;
+            --radius:         14px;
+            --radius-lg:      20px;
+            --sidebar-width:  230px;
+        }
+
+        body {
+            display: block;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── App Shell ── */
+        .app-shell { display: flex; min-height: 100vh; }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-width); background: var(--sidebar-bg);
+            box-shadow: 2px 0 20px rgba(124,111,248,.08);
+            display: flex; flex-direction: column;
+            padding: 28px 14px; position: fixed;
+            top: 0; left: 0; bottom: 0; z-index: 100; overflow-y: auto;
+        }
+
+        .sidebar-logo {
+            display: flex; align-items: center; gap: 10px;
+            padding: 0 6px 24px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+        }
+        .sidebar-logo-icon {
+            width: 36px; height: 36px; flex-shrink: 0;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 17px; color: #fff; box-shadow: 0 4px 14px var(--primary-glow);
+        }
+        .sidebar-logo-text { font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+
+        .sidebar-welcome {
+            padding: 0 6px 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px;
+        }
+        .welcome-greeting { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.4; }
+        .welcome-date { font-size: 12px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+
+        .sidebar-nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+
+        .nav-item {
+            display: flex; align-items: center; gap: 11px;
+            padding: 11px 14px; border-radius: var(--radius-sm);
+            cursor: pointer; transition: all .2s ease;
+            color: var(--muted); font-size: 14px; font-weight: 600;
+            user-select: none; border: none; background: none; width: 100%; text-align: left;
+            font-family: inherit;
+        }
+        .nav-item-icon { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; }
+        .nav-item:hover { background: var(--primary-bg); color: var(--primary); }
+        .nav-item.active { background: var(--primary-bg); color: var(--primary); box-shadow: 0 0 0 1.5px rgba(124,111,248,.2); }
+
+        /* ── Content area ── */
+        .content { margin-left: var(--sidebar-width); flex: 1; min-width: 0; }
+        .main { padding: 36px 40px 80px; max-width: 100%; }
+
+        .section        { display: none; animation: fadeIn .25s ease; }
+        .section.active { display: block; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Typography ── */
+        .section-title { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+        .section-sub   { color: var(--muted); font-size: 14px; margin-top: 3px; margin-bottom: 24px; }
+
+        /* ── Cards & Inputs ── */
+        .card {
+            background: var(--card); border-radius: var(--radius);
+            padding: 20px; box-shadow: var(--shadow-sm);
+            margin-bottom: 16px; border: 1px solid var(--border);
+        }
+
+        input[type="text"], select, textarea {
+            width: 100%; padding: 11px 15px;
+            border: 2px solid var(--border); border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 14px; color: var(--text); background: #fff;
+            transition: border-color .2s, box-shadow .2s; outline: none;
+        }
+        input[type="text"]:focus, select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(124,111,248,.12);
+        }
+        input::placeholder { color: #94a3b8; }
+        select { cursor: pointer; }
+
+        .input-row       { display: flex; gap: 8px; }
+        .input-row input { flex: 1; }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: 11px 18px; border: none; border-radius: var(--radius-sm);
+            font-family: inherit; font-size: 14px; font-weight: 600;
+            cursor: pointer; transition: all .2s ease; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: var(--shadow); }
+        .btn-primary:active { transform: translateY(0); }
+
+        /* Delete × button */
+        .btn-ghost { background: transparent; color: var(--muted); padding: 6px 8px; font-size: 17px; line-height: 1; }
+        .btn-ghost:hover { color: var(--red); background: #fee2e2; border-radius: 6px; }
+
+        /* Edit ✏ button */
+        .btn-edit { background: transparent; color: var(--muted); padding: 6px 8px; font-size: 15px; line-height: 1; }
+        .btn-edit:hover { color: var(--primary); background: rgba(124,111,248,.1); border-radius: 6px; }
+
+        /* Save / Cancel shown inside editing items */
+        .btn-save {
+            padding: 7px 13px; font-size: 13px; font-weight: 600;
+            background: var(--primary); color: #fff;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-family: inherit; white-space: nowrap;
+            transition: background .2s;
+        }
+        .btn-save:hover { background: var(--primary-dark); }
+
+        .btn-cancel {
+            padding: 7px 11px; font-size: 13px; font-weight: 600;
+            background: transparent; color: var(--muted);
+            border: 1.5px solid var(--border); border-radius: 6px;
+            cursor: pointer; font-family: inherit; white-space: nowrap;
+            transition: all .2s;
+        }
+        .btn-cancel:hover { border-color: var(--muted); color: var(--text); }
+
+        .btn-sm { padding: 8px 14px; font-size: 13px; }
+
+        /* Inline edit input (used inside items when editing) */
+        .edit-input {
+            flex: 1;
+            padding: 7px 11px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            border: 2px solid var(--primary) !important;
+            border-radius: 6px !important;
+            box-shadow: 0 0 0 3px rgba(124,111,248,.12) !important;
+        }
+
+        /* ── Stats ── */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+
+        .stat-card {
+            background: var(--card); border-radius: var(--radius);
+            padding: 16px 12px; text-align: center;
+            box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+        }
+
+        .stat-value {
+            font-size: 28px; font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+
+        .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ── Empty states ── */
+        .empty-state { text-align: center; padding: 50px 20px; color: var(--muted); }
+        .empty-icon  { font-size: 52px; margin-bottom: 14px; }
+        .empty-state p { font-size: 15px; line-height: 1.6; }
+
+        /* ══════════════════════════════════════════
+           HABIT TRACKER
+           ══════════════════════════════════════════ */
+        .habit-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px 18px; background: var(--card);
+            border-radius: var(--radius); box-shadow: var(--shadow-sm);
+            margin-bottom: 10px; border: 2px solid transparent; transition: all .2s ease;
+        }
+        .habit-item:hover     { border-color: var(--border); transform: translateY(-2px); box-shadow: var(--shadow); }
+        .habit-item.done-today{ border-color: var(--green); background: linear-gradient(to right, #ecfdf5, #fff); }
+        .habit-item.editing   { border-color: var(--primary-light); background: rgba(124,111,248,.03); }
+
+        .habit-circle {
+            width: 30px; height: 30px; border-radius: 50%;
+            border: 2.5px solid var(--border); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .2s ease; flex-shrink: 0; font-size: 14px; color: transparent;
+        }
+        .habit-circle:hover   { border-color: var(--green); background: #ecfdf5; }
+        .habit-circle.checked { background: var(--green); border-color: var(--green); color: #fff; }
+
+        .habit-info { flex: 1; min-width: 0; }
+
+        .habit-name {
+            font-size: 15px; font-weight: 600; color: var(--text);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            transition: color .2s, opacity .2s;
+        }
+        .habit-item.done-today .habit-name { text-decoration: line-through; color: var(--muted); opacity: .7; }
+
+        .habit-meta { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+
+        .streak-pill {
+            display: inline-flex; align-items: center; gap: 3px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            color: #92400e; font-size: 11px; font-weight: 700;
+            padding: 3px 9px; border-radius: 20px;
+        }
+
+        .week-dots { display: flex; gap: 3px; }
+        .dot            { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+        .dot.done       { background: var(--green); }
+        .dot.today-done { background: var(--green); box-shadow: 0 0 0 2.5px rgba(16,185,129,.25); }
+
+        /* Habit name + frequency badge on one line */
+        .habit-name-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+
+        /* Frequency badge — subtle indigo pill */
+        .freq-badge {
+            display: inline-flex; align-items: center;
+            background: var(--primary-bg); color: var(--primary);
+            font-size: 10px; font-weight: 700;
+            padding: 2px 8px; border-radius: 20px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        /* Target-day badge — green pill showing the scheduled day or date */
+        .target-day-badge {
+            display: inline-flex; align-items: center;
+            background: rgba(16,185,129,.12); color: var(--green);
+            font-size: 10px; font-weight: 700;
+            padding: 2px 8px; border-radius: 20px;
+            flex-shrink: 0;
+        }
+
+        /* Second row of the add-habit form (target-day picker) */
+        .target-day-row {
+            display: flex; gap: 8px; align-items: center; margin-top: 8px;
+        }
+        .target-day-row label {
+            font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap;
+        }
+
+        /* Inline edit row inside a habit */
+        .habit-edit-row { display: flex; gap: 6px; align-items: center; flex: 1; flex-wrap: wrap; }
+
+        /* ══════════════════════════════════════════
+           TO-DO LIST
+           ══════════════════════════════════════════ */
+        .todo-add-card {
+            background: var(--card); border-radius: var(--radius);
+            padding: 20px; box-shadow: var(--shadow-sm);
+            margin-bottom: 16px; border: 1px solid var(--border);
+        }
+        .todo-add-card .row2 { display: flex; gap: 8px; margin-top: 10px; }
+        .todo-add-card select { width: auto; flex: none; padding: 11px 12px; }
+        .todo-add-card .cat-input { flex: 1; }
+
+        .filter-row { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+
+        .filter-chip {
+            padding: 5px 14px; border: 2px solid var(--border); border-radius: 20px;
+            background: var(--card); font-family: inherit; font-size: 12px; font-weight: 600;
+            color: var(--muted); cursor: pointer; transition: all .2s ease;
+        }
+        .filter-chip:hover  { border-color: var(--primary-light); color: var(--primary); }
+        .filter-chip.active { border-color: var(--primary); color: var(--primary); background: var(--primary-bg); }
+
+        .todo-item {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 16px; background: var(--card);
+            border-radius: var(--radius); box-shadow: var(--shadow-sm);
+            margin-bottom: 8px; border-left: 4px solid transparent;
+            border-top: 1px solid var(--border); border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border); transition: all .2s ease;
+        }
+        .todo-item:hover    { box-shadow: var(--shadow); transform: translateY(-1px); }
+        .todo-item.p-high   { border-left-color: var(--red); }
+        .todo-item.p-medium { border-left-color: var(--amber); }
+        .todo-item.p-low    { border-left-color: var(--green); }
+        .todo-item.is-done  { opacity: .55; }
+        .todo-item.editing  { border-left-color: var(--primary) !important; opacity: 1 !important; }
+
+        .todo-square {
+            width: 22px; height: 22px; border-radius: 50%;
+            border: 2.5px solid var(--border); cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .2s ease; flex-shrink: 0; margin-top: 1px;
+            font-size: 12px; color: transparent;
+        }
+        .todo-square:hover   { border-color: var(--primary); background: var(--primary-bg); }
+        .todo-square.checked { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+        .todo-body { flex: 1; min-width: 0; }
+        .todo-text { font-size: 14px; font-weight: 500; line-height: 1.5; }
+        .todo-item.is-done .todo-text { text-decoration: line-through; color: var(--muted); }
+
+        .badge-row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+        .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-high   { background: #fee2e2; color: #dc2626; }
+        .badge-medium { background: #fef3c7; color: #d97706; }
+        .badge-low    { background: #d1fae5; color: #059669; }
+        .badge-cat    { background: #e0e7ff; color: #4338ca; }
+        .badge-date   { background: var(--primary-bg); color: var(--primary); font-size:10px; }
+        .badge-goalcat { background: rgba(245,158,11,.13); color: #b45309; }
+
+        /* Edit form inside a todo item */
+        .todo-edit-form { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+        .todo-edit-row  { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .todo-edit-row select    { flex: none; font-size: 13px; padding: 7px 10px; width: auto; }
+        .todo-edit-row .cat-edit { flex: 1; min-width: 80px; font-size: 13px; padding: 7px 10px; }
+
+        /* ══════════════════════════════════════════
+           GOALS
+           ══════════════════════════════════════════ */
+        .goal-card {
+            background: var(--card); border-radius: var(--radius-lg);
+            padding: 22px; box-shadow: var(--shadow-sm);
+            margin-bottom: 18px; border: 1px solid var(--border); transition: all .2s ease;
+        }
+        .goal-card:hover { box-shadow: var(--shadow); }
+
+        .goal-top {
+            display: flex; align-items: flex-start;
+            justify-content: space-between; gap: 12px; margin-bottom: 14px;
+        }
+
+        .goal-title { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.4; transition: color .2s, opacity .2s; }
+        .goal-card.is-complete .goal-title { text-decoration: line-through; color: var(--muted); opacity: .7; }
+        .goal-pct   { font-size: 16px; font-weight: 800; color: var(--primary); white-space: nowrap; }
+
+        /* Goal title inline edit row */
+        .goal-edit-row { display: flex; gap: 6px; align-items: center; flex: 1; }
+
+        .progress-track { background: var(--bg); border-radius: 100px; height: 10px; overflow: hidden; margin-bottom: 8px; }
+        .progress-fill  { height: 100%; border-radius: 100px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width .6s cubic-bezier(.4,0,.2,1); }
+        .progress-fill.complete { background: linear-gradient(90deg, var(--green), var(--green-light)); }
+
+        .progress-meta { font-size: 12px; color: var(--muted); margin-bottom: 14px; font-weight: 500; }
+
+        .milestones { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+
+        .milestone {
+            display: flex; align-items: center; gap: 10px; padding: 10px 13px;
+            background: var(--bg); border-radius: var(--radius-sm);
+            cursor: pointer; transition: all .15s ease; border: 1px solid transparent;
+        }
+        .milestone:hover    { border-color: var(--border); background: #e9edf5; }
+        .milestone.ms-done  { background: #ecfdf5; }
+        .milestone.ms-editing { background: var(--primary-bg); border-color: var(--primary-light); cursor: default; }
+        .milestone.ms-editing:hover { background: var(--primary-bg); }
+
+        .milestone-circle {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: transparent; flex-shrink: 0; transition: all .2s ease;
+        }
+        .milestone.ms-done .milestone-circle { background: var(--green); border-color: var(--green); color: #fff; }
+
+        .milestone-label { font-size: 13px; color: var(--text); flex: 1; font-weight: 500; }
+        .milestone.ms-done .milestone-label { text-decoration: line-through; color: var(--muted); }
+
+        /* Inline edit row inside a milestone */
+        .ms-edit-row { display: flex; gap: 6px; align-items: center; flex: 1; }
+        .ms-edit-row .edit-input { font-size: 13px !important; padding: 5px 9px !important; font-weight: 500 !important; }
+
+        .ms-add-row { display: flex; gap: 8px; }
+        .ms-add-row input { font-size: 13px; padding: 9px 13px; }
+
+        /* ── Toast ── */
+        .toast {
+            position: fixed; bottom: 28px; left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1e293b; color: #fff;
+            padding: 11px 20px; border-radius: 10px;
+            font-size: 14px; font-weight: 500;
+            box-shadow: var(--shadow-lg); z-index: 999;
+            transition: transform .3s cubic-bezier(.4,0,.2,1); white-space: nowrap;
+        }
+        .toast.visible { transform: translateX(-50%) translateY(0); }
+
+        /* ══════════════════════════════════════════
+           DAILY QUOTE
+           ══════════════════════════════════════════ */
+
+        .quote-card {
+            background: linear-gradient(135deg, rgba(124,111,248,.07) 0%, rgba(139,92,246,.09) 100%);
+            border: 1px solid rgba(124,111,248,.18);
+            border-radius: var(--radius-lg);
+            padding: 22px 52px 18px 52px;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .quote-card::before {
+            content: '\201C';
+            position: absolute; top: 2px; left: 16px;
+            font-size: 72px; line-height: 1;
+            font-family: Georgia, serif;
+            color: rgba(124,111,248,.18);
+            pointer-events: none;
+        }
+        .quote-text {
+            font-size: 14.5px; font-style: italic;
+            font-family: Georgia, 'Times New Roman', serif;
+            color: var(--text); line-height: 1.7;
+        }
+        .quote-author {
+            margin-top: 10px;
+            font-size: 11.5px; font-weight: 700;
+            color: var(--primary); letter-spacing: 0.4px;
+            text-transform: uppercase;
+        }
+        .quote-refresh {
+            position: absolute; top: 12px; right: 12px;
+            background: none; border: none; cursor: pointer;
+            color: rgba(124,111,248,.45); font-size: 17px;
+            width: 30px; height: 30px; border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            transition: color .2s, background .2s, transform .3s;
+        }
+        .quote-refresh:hover {
+            color: var(--primary); background: var(--primary-bg);
+            transform: rotate(45deg);
+        }
+
+        /* ══════════════════════════════════════════
+           CALENDAR VIEW
+           ══════════════════════════════════════════ */
+
+        /* List / Calendar toggle pill */
+        .view-toggle {
+            display: inline-flex;
+            gap: 3px;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            padding: 3px;
+            margin-bottom: 20px;
+        }
+        .view-btn {
+            padding: 7px 16px; border: none; border-radius: 7px;
+            font-family: inherit; font-size: 13px; font-weight: 600;
+            cursor: pointer; color: var(--muted); background: transparent;
+            transition: all .2s ease; display: inline-flex; align-items: center; gap: 5px;
+        }
+        .view-btn:hover  { color: var(--text); }
+        .view-btn.active { background: var(--card); color: var(--primary); box-shadow: var(--shadow-sm); }
+
+        /* Outer calendar card — fluid, never overflows its container */
+        .cal-card {
+            background: var(--card); border-radius: var(--radius-lg);
+            border: 1px solid var(--border); box-shadow: var(--shadow-sm);
+            overflow: hidden; margin-bottom: 16px;
+            width: 100%;          /* always fill the available width */
+            box-sizing: border-box;
+        }
+
+        /* Month nav bar */
+        .cal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 16px; border-bottom: 1px solid var(--border);
+            background: var(--card);
+        }
+        .cal-month-label { font-size: 16px; font-weight: 800; color: var(--text); }
+
+        .cal-nav-btn {
+            width: 30px; height: 30px; border-radius: 7px;
+            border: 1.5px solid var(--border); background: var(--card);
+            font-size: 18px; color: var(--muted); cursor: pointer; line-height: 1;
+            display: flex; align-items: center; justify-content: center;
+            transition: all .15s ease; font-family: inherit; flex-shrink: 0;
+        }
+        .cal-nav-btn:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        /* 7-column grid — columns share available width equally, never overflow */
+        .cal-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(0, 1fr));
+            border-left: 1px solid var(--border);
+            width: 100%;
+        }
+
+        /* Day-of-week header cells */
+        .cal-dow {
+            padding: 6px 2px; text-align: center;
+            font-size: 9px; font-weight: 700; color: var(--muted);
+            text-transform: uppercase; letter-spacing: 0;
+            background: var(--bg);
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        /* Individual day cell */
+        .cal-cell {
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 5px 4px 6px;
+            min-height: 72px;
+            background: #fff;
+            vertical-align: top;
+            transition: background .1s;
+            /* critical: prevent any child from blowing out the column */
+            overflow: hidden;
+            min-width: 0;
+        }
+        .cal-cell.cal-empty { background: #f8fafc; }
+        .cal-cell.cal-today { background: var(--primary-bg); }
+        .cal-cell.cal-past  { background: #fff; }
+
+        /* Day number */
+        .cal-day-num {
+            font-size: 10px; font-weight: 700; color: #94a3b8;
+            text-align: right; margin-bottom: 4px; line-height: 1;
+            overflow: hidden;
+        }
+        /* Today's date gets a filled indigo circle */
+        .cal-day-num .is-today {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 18px; height: 18px; border-radius: 50%;
+            background: var(--primary); color: #fff;
+            font-size: 10px; font-weight: 800;
+        }
+
+        /* Column of habit rows inside a cell */
+        .cal-habits-list { display: flex; flex-direction: column; gap: 2px; }
+
+        /* One habit row */
+        .cal-habit {
+            display: flex; align-items: flex-start; gap: 3px;
+            padding: 2px 2px; border-radius: 3px;
+            cursor: pointer; transition: background .12s ease;
+            /* don't let this element push the column wider */
+            min-width: 0; overflow: hidden;
+        }
+        .cal-habit:hover { background: var(--bg); }
+
+        /* Small circle checkbox */
+        .cal-circle {
+            width: 11px; height: 11px; border-radius: 50%;
+            border: 1.5px solid #cbd5e1;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; font-size: 6px; color: transparent;
+            transition: all .15s ease;
+            margin-top: 1px;   /* align with first line of wrapped text */
+        }
+        .cal-circle.done { background: var(--green); border-color: var(--green); color: #fff; }
+
+        /* Habit name — small, wraps onto multiple lines */
+        .cal-hname {
+            font-size: 9px; font-weight: 500; color: #64748b;
+            line-height: 1.35;
+            white-space: normal;      /* allow wrapping */
+            word-break: break-word;   /* break very long single words */
+            overflow: hidden;
+            min-width: 0; flex: 1;
+        }
+        .cal-habit.done .cal-hname { text-decoration: line-through; opacity: .55; }
+
+        /* Placeholder when no habits exist */
+        .cal-no-habits { font-size: 9px; color: #cbd5e1; text-align: center; padding: 4px 0; }
+
+        /* ── Calendar: To-Do items ── */
+        .cal-todo {
+            display: flex; align-items: flex-start; gap: 3px;
+            padding: 2px 2px; border-radius: 3px; cursor: pointer;
+            min-width: 0; overflow: hidden;
+        }
+        .cal-todo:hover { background: var(--bg); }
+        .cal-todo.is-done .cal-hname { text-decoration: line-through; opacity: .6; }
+
+        /* ── Calendar: Goal items ── */
+        .cal-goal {
+            display: flex; align-items: flex-start; gap: 3px;
+            padding: 2px 2px; border-radius: 3px;
+            min-width: 0; overflow: hidden;
+        }
+
+        /* ── Mobile responsive ── */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed; top: auto; left: 0; right: 0; bottom: 0;
+                width: 100%; height: auto; flex-direction: row;
+                padding: 8px 8px 12px; border-top: 1px solid var(--border);
+                box-shadow: 0 -4px 20px rgba(124,111,248,.12); z-index: 200;
+            }
+            .sidebar-logo, .sidebar-welcome { display: none; }
+            .sidebar-nav { flex-direction: row; gap: 2px; flex: 1; }
+            .nav-item {
+                flex-direction: column; gap: 2px; padding: 6px 4px; font-size: 10px;
+                align-items: center; justify-content: center; flex: 1; border-radius: 10px;
+            }
+            .nav-item-icon { font-size: 20px; width: auto; }
+            .content { margin-left: 0; }
+            .main { padding: 20px 16px 100px; max-width: 100%; }
+            .section-title { font-size: 22px; }
+            .stat-value { font-size: 24px; }
+            .todo-add-card .row2 { flex-wrap: wrap; }
+            .todo-add-card select { width: 100%; }
+            .todo-edit-row { flex-wrap: wrap; }
+            .cal-header { padding: 12px 12px; }
+            .cal-cell { padding: 3px 2px 4px; min-height: 58px; }
+            .cal-hname { font-size: 8px; }
+            .cal-circle { width: 9px; height: 9px; font-size: 5px; }
+            .cal-month-label { font-size: 14px; }
+        }
+
+        /* ── 로그인 모달 ── */
+        .auth-overlay {
+            position: fixed; inset: 0; z-index: 9999;
+            background: rgba(240,238,248,0.97);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .auth-overlay.hidden { display: none; }
+        .auth-card {
+            background: #fff; border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 40px 36px; width: 100%; max-width: 380px;
+        }
+        .auth-logo {
+            display: flex; align-items: center; gap: 10px;
+            justify-content: center; margin-bottom: 28px;
+        }
+        .auth-logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-light));
+            border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 17px; color: #fff; box-shadow: 0 4px 14px var(--primary-glow);
+        }
+        .auth-logo-text { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+        .auth-title { font-size: 18px; font-weight: 700; color: var(--text); text-align: center; margin-bottom: 6px; }
+        .auth-sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 24px; }
+        .auth-field { margin-bottom: 14px; }
+        .auth-field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+        .auth-field input {
+            width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+            border: 1.5px solid var(--border); font-size: 14px; font-family: inherit;
+            outline: none; transition: border-color .2s;
+        }
+        .auth-field input:focus { border-color: var(--primary); }
+        .auth-btn {
+            width: 100%; padding: 12px; border-radius: var(--radius-sm);
+            background: var(--primary); color: #fff; border: none;
+            font-size: 14px; font-weight: 700; font-family: inherit;
+            cursor: pointer; transition: background .2s; margin-top: 6px;
+        }
+        .auth-btn:hover { background: var(--primary-dark); }
+        .auth-switch { text-align: center; margin-top: 18px; font-size: 13px; color: var(--muted); }
+        .auth-switch span { color: var(--primary); font-weight: 600; cursor: pointer; }
+        .auth-switch span:hover { text-decoration: underline; }
+        .auth-error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+        .auth-error.show { display: block; }
+
+        /* ── 사이드바 사용자 영역 ── */
+        .sidebar-user {
+            margin-top: auto; padding: 14px 6px 0;
+            border-top: 1px solid var(--border);
+        }
+        .sidebar-user-email { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-logout-btn {
+            width: 100%; padding: 9px 14px; border-radius: var(--radius-sm);
+            background: none; border: 1.5px solid var(--border);
+            color: var(--muted); font-size: 13px; font-weight: 600;
+            font-family: inherit; cursor: pointer; transition: all .2s; text-align: left;
+        }
+        .sidebar-logout-btn:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.05); }
+    </style>
+</head>
+<body>
+
+<!-- 로그인 모달: 로그인 전에 앱 위를 덮는 화면 -->
+<div class="auth-overlay" id="authOverlay">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <div class="auth-logo-icon">✦</div>
+            <span class="auth-logo-text">Momentum</span>
+        </div>
+        <div id="authError" class="auth-error"></div>
+        <!-- 로그인 폼 -->
+        <div id="loginForm">
+            <div class="auth-title">다시 오셨네요!</div>
+            <div class="auth-sub">계속하려면 로그인하세요</div>
+            <div class="auth-field">
+                <label>이메일</label>
+                <input type="email" id="loginEmail" placeholder="your@email.com">
+            </div>
+            <div class="auth-field">
+                <label>비밀번호</label>
+                <input type="password" id="loginPassword" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter') doLogin()">
+            </div>
+            <button class="auth-btn" onclick="doLogin()">로그인</button>
+            <div class="auth-switch">계정이 없으신가요? <span onclick="toggleAuthForm()">회원가입</span></div>
+        </div>
+        <!-- 회원가입 폼 -->
+        <div id="signupForm" style="display:none">
+            <div class="auth-title">Momentum 시작하기</div>
+            <div class="auth-sub">무료로 계정을 만드세요</div>
+            <div class="auth-field">
+                <label>이메일</label>
+                <input type="email" id="signupEmail" placeholder="your@email.com">
+            </div>
+            <div class="auth-field">
+                <label>비밀번호 (6자리 이상)</label>
+                <input type="password" id="signupPassword" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter') doSignup()">
+            </div>
+            <button class="auth-btn" onclick="doSignup()">회원가입</button>
+            <div class="auth-switch">이미 계정이 있으신가요? <span onclick="toggleAuthForm()">로그인</span></div>
+        </div>
+    </div>
+</div>
+
+<div class="app-shell">
+<aside class="sidebar">
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">✦</div>
+        <span class="sidebar-logo-text">Momentum</span>
+    </div>
+    <div class="sidebar-welcome">
+        <div class="welcome-greeting" id="welcomeGreeting"></div>
+        <div class="welcome-date" id="dateBadge"></div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-item active" id="tab-calendar" onclick="showSection('calendar')">
+            <span class="nav-item-icon">📅</span>Calendar
+        </div>
+        <div class="nav-item" id="tab-habits" onclick="showSection('habits')">
+            <span class="nav-item-icon">🔥</span>Habits
+        </div>
+        <div class="nav-item" id="tab-todos" onclick="showSection('todos')">
+            <span class="nav-item-icon">✅</span>To-Do
+        </div>
+        <div class="nav-item" id="tab-goals" onclick="showSection('goals')">
+            <span class="nav-item-icon">🎯</span>Goals
+        </div>
+    </nav>
+    <!-- 로그인한 사용자 정보 + 로그아웃 버튼 -->
+    <div class="sidebar-user">
+        <div class="sidebar-user-email" id="sidebarUserEmail"></div>
+        <button class="sidebar-logout-btn" onclick="doLogout()">🚪 로그아웃</button>
+    </div>
+</aside>
+<div class="content">
+
+<main class="main">
+
+    <!-- CALENDAR -->
+    <section class="section active" id="section-calendar">
+        <h1 class="section-title">Calendar</h1>
+        <p class="section-sub">Your habits, tasks, and goals at a glance</p>
+
+        <!-- Daily Quote -->
+        <div class="quote-card">
+            <button class="quote-refresh" onclick="cycleQuote()" title="Show another quote">↻</button>
+            <p class="quote-text" id="quoteText"></p>
+            <p class="quote-author" id="quoteAuthor"></p>
+        </div>
+
+        <div id="calendarView"></div>
+    </section>
+
+    <!-- HABITS -->
+    <section class="section" id="section-habits">
+        <h1 class="section-title">Habit Tracker</h1>
+        <p class="section-sub">Build consistency, one day at a time</p>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-label">Habits</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-today">0</div>
+                <div class="stat-label">On Track</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="stat-best">0</div>
+                <div class="stat-label">Best Streak</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="input-row">
+                <input type="text" id="habitInput"
+                       placeholder="Add a habit (e.g. Drink 8 glasses of water)"
+                       onkeydown="if(event.key==='Enter') addHabit()">
+            </div>
+            <div class="input-row" style="margin-top:8px">
+                <select id="habitFreq" style="flex:none;width:auto" onchange="onFreqChange()">
+                    <option value="daily">📅 Daily</option>
+                    <option value="weekly">📆 Weekly</option>
+                    <option value="biweekly">🗓 Biweekly</option>
+                    <option value="monthly">🗓 Monthly</option>
+                    <option value="quarterly">📊 Quarterly</option>
+                </select>
+                <button class="btn btn-primary" style="flex:1" onclick="addHabit()">+ Add Habit</button>
+            </div>
+            <!-- Target-day picker — shown when frequency ≠ Daily -->
+            <div class="target-day-row" id="targetDayRow" style="display:none">
+                <label id="targetDayLabel">Which day of the week?</label>
+                <select id="habitTargetDay" style="flex:1"></select>
+            </div>
+        </div>
+
+        <div id="habitsList"></div>
+    </section>
+
+    <!-- TO-DO -->
+    <section class="section" id="section-todos">
+        <h1 class="section-title">To-Do List</h1>
+        <p class="section-sub">Stay organized and get things done</p>
+
+        <div class="todo-add-card">
+            <div class="input-row">
+                <input type="text" id="todoInput"
+                       placeholder="What needs to be done?"
+                       onkeydown="if(event.key==='Enter') addTodo()">
+            </div>
+            <div class="row2">
+                <select id="todoPriority">
+                    <option value="medium">⚡ Medium priority</option>
+                    <option value="high">🔴 High priority</option>
+                    <option value="low">🟢 Low priority</option>
+                </select>
+                <input type="text" class="cat-input" id="todoCategory"
+                       placeholder="Category (optional)">
+                <button class="btn btn-primary" onclick="addTodo()">+ Add</button>
+            </div>
+            <div class="target-day-row" style="margin-top:8px">
+                <label style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap">📅 Due date (optional)</label>
+                <input type="date" id="todoDueDate"
+                       style="flex:1;font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card);min-width:0">
+            </div>
+        </div>
+
+        <div class="filter-row">
+            <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
+            <button class="filter-chip"        onclick="setFilter('active',this)">Active</button>
+            <button class="filter-chip"        onclick="setFilter('done',this)">Completed</button>
+        </div>
+
+        <div id="todosList"></div>
+    </section>
+
+    <!-- GOALS -->
+    <section class="section" id="section-goals">
+        <h1 class="section-title">Goals</h1>
+        <p class="section-sub">Dream big, break it down, make it happen</p>
+
+        <div class="card">
+            <div class="input-row">
+                <input type="text" id="goalInput"
+                       placeholder="Set a new goal (e.g. Run a 5K race)"
+                       onkeydown="if(event.key==='Enter') addGoal()">
+                <button class="btn btn-primary" onclick="addGoal()">+ Add</button>
+            </div>
+            <div class="row2" style="margin-top:8px">
+                <select id="goalCategory" style="flex:1">
+                    <option value="Health &amp; Fitness">💪 Health &amp; Fitness</option>
+                    <option value="Finance &amp; Wealth">💰 Finance &amp; Wealth</option>
+                    <option value="Career &amp; Learning">📚 Career &amp; Learning</option>
+                    <option value="Relationships">❤️ Relationships</option>
+                    <option value="Personal Growth">🌱 Personal Growth</option>
+                    <option value="Travel">✈️ Travel</option>
+                    <option value="Creative">🎨 Creative</option>
+                    <option value="Other">⭐ Other</option>
+                </select>
+                <input type="date" id="goalTargetDate" title="Target Date (optional)"
+                       style="flex:none;font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card)">
+            </div>
+        </div>
+
+        <div id="goalsList"></div>
+    </section>
+
+</main>
+
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── Firebase 초기화 ── */
+const firebaseConfig = {
+    apiKey: "AIzaSyBh2fvcY9v_2KnDllgjnGL8yRO2cFi0On8",
+    authDomain: "momentum-810cc.firebaseapp.com",
+    projectId: "momentum-810cc",
+    storageBucket: "momentum-810cc.firebasestorage.app",
+    messagingSenderId: "27143816545",
+    appId: "1:27143816545:web:b1c1457f2d537c8cfd7120"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// 현재 로그인한 사용자 uid (로그인 전에는 null)
+let currentUid = null;
+
+/* ── Storage ── */
+// localStorage에 즉시 저장 (빠른 UI 반응) + Firestore에도 비동기 저장
+function save(key, data) {
+    localStorage.setItem('myflow_' + key, JSON.stringify(data));
+    // 로그인 상태일 때만 Firestore에도 저장
+    if (currentUid) {
+        db.collection('users').doc(currentUid).collection('data').doc(key)
+            .set({ items: data })
+            .catch(err => console.error('Firestore 저장 실패:', err));
+    }
+}
+
+// localStorage에서 불러오기 (초기값)
+function load(key, fallback = []) {
+    try { const r = localStorage.getItem('myflow_' + key); return r ? JSON.parse(r) : fallback; }
+    catch { return fallback; }
+}
+
+// Firestore에서 데이터를 불러와서 localStorage와 앱에 반영
+async function loadFromFirestore(uid) {
+    try {
+        const keys = ['habits', 'todos', 'goals'];
+        for (const key of keys) {
+            const doc = await db.collection('users').doc(uid).collection('data').doc(key).get();
+            if (doc.exists) {
+                // Firestore 데이터를 localStorage에 덮어쓰기 (동기화)
+                localStorage.setItem('myflow_' + key, JSON.stringify(doc.data().items));
+            }
+        }
+        // 데이터 로드 후 화면 다시 그리기
+        habits = load('habits');
+        todos  = load('todos');
+        goals  = load('goals');
+        renderHabits();
+        renderTodos();
+        renderGoals();
+        renderCalendar();
+    } catch (err) {
+        console.error('Firestore 불러오기 실패:', err);
+    }
+}
+
+/* ── Utilities ── */
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function lastNDays(n) {
+    const days = [];
+    for (let i = n - 1; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        days.push(d.toISOString().split('T')[0]);
+    }
+    return days;
+}
+
+// Escape user text so it displays safely as HTML
+function safe(str) {
+    const el = document.createElement('div');
+    el.appendChild(document.createTextNode(String(str)));
+    return el.innerHTML;
+}
+
+// Escape user text for use inside an HTML attribute (e.g. value="...")
+function safeAttr(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('visible');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('visible'), 2600);
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr + 'T12:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+document.getElementById('dateBadge').textContent =
+    new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
+
+function renderGreeting() {
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning, Sophie 👋'
+                   : hour < 17 ? 'Good afternoon, Sophie 👋'
+                   :              'Good evening, Sophie 👋';
+    const el = document.getElementById('welcomeGreeting');
+    if (el) el.textContent = greeting;
+}
+
+/* ── Navigation ── */
+function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(t => t.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+    if (name === 'calendar') renderCalendar();
+}
+
+/* ════════════════════════════════════════════════════
+   HABIT TRACKER
+   ════════════════════════════════════════════════════ */
+
+let habits = load('habits');
+let editingHabitId = null;
+
+// ── Frequency metadata ──
+const FREQ_LABELS = { daily:'Daily', weekdays:'Weekdays', weekly:'Weekly', biweekly:'Biweekly', monthly:'Monthly', quarterly:'Quarterly' };
+const FREQ_UNITS  = { daily:'day',   weekdays:'day',      weekly:'week',   biweekly:'period',   monthly:'month',   quarterly:'quarter'   };
+const FREQ_OPTS   = [
+    { v:'daily',     l:'📅 Daily'     },
+    { v:'weekdays',  l:'💼 Weekdays'  },
+    { v:'weekly',    l:'📆 Weekly'    },
+    { v:'biweekly',  l:'🗓 Biweekly'  },
+    { v:'monthly',   l:'🗓 Monthly'   },
+    { v:'quarterly', l:'📊 Quarterly' },
+];
+
+const DOW_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function ordinal(n) {
+    const s = ['th','st','nd','rd'];
+    const v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+// Should this habit appear on this specific calendar date?
+function shouldShowHabitOnDate(h, dateStr) {
+    const freq = h.freq || 'daily';
+    if (freq === 'daily') return true;
+    if (freq === 'weekdays') {
+        const dow = new Date(dateStr + 'T12:00:00').getDay();
+        return dow >= 1 && dow <= 5; // Mon–Fri only
+    }
+    if (h.targetDay == null) return true; // backward compat
+
+    const d = new Date(dateStr + 'T12:00:00');
+
+    if (freq === 'weekly') {
+        return d.getDay() === h.targetDay;
+    }
+    if (freq === 'biweekly') {
+        if (d.getDay() !== h.targetDay) return false;
+        // Only show on the FIRST occurrence of targetDay within the 14-day period
+        const ref = new Date('2024-01-01T12:00:00');
+        const days = Math.floor((d - ref) / 86400000);
+        const periodStart = new Date(ref.getTime() + Math.floor(Math.max(days, 0) / 14) * 14 * 86400000);
+        let firstOcc = new Date(periodStart);
+        while (firstOcc.getDay() !== h.targetDay) firstOcc.setDate(firstOcc.getDate() + 1);
+        return dateStr === firstOcc.toISOString().split('T')[0];
+    }
+    if (freq === 'monthly' || freq === 'quarterly') {
+        return d.getDate() === h.targetDay;
+    }
+    return true;
+}
+
+// Returns the "canonical" date to store when checked off via list view.
+// For day-specific habits, this is the target day within the current period.
+function getCanonicalDate(h) {
+    const freq = h.freq || 'daily';
+    if (freq === 'daily' || h.targetDay == null) return today();
+
+    const d = new Date(today() + 'T12:00:00');
+
+    if (freq === 'weekdays') {
+        // Snap back to the most recent weekday if today is a weekend
+        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+        return d.toISOString().split('T')[0];
+    }
+    if (freq === 'weekly') {
+        // Find the Monday of this week, then step to targetDay within that week
+        const dow = d.getDay(); // 0=Sun … 6=Sat
+        const diffToMon = dow === 0 ? -6 : 1 - dow;
+        const monday = new Date(d);
+        monday.setDate(d.getDate() + diffToMon);
+        // Mon→offset 0, Tue→1, …, Sat→5, Sun→6
+        const offsetFromMon = h.targetDay === 0 ? 6 : h.targetDay - 1;
+        const target = new Date(monday);
+        target.setDate(monday.getDate() + offsetFromMon);
+        return target.toISOString().split('T')[0];
+    }
+    if (freq === 'biweekly') {
+        const ref = new Date('2024-01-01T12:00:00');
+        const days = Math.floor((d - ref) / 86400000);
+        const periodStart = new Date(ref.getTime() + Math.floor(Math.max(days, 0) / 14) * 14 * 86400000);
+        let firstOcc = new Date(periodStart);
+        while (firstOcc.getDay() !== h.targetDay) firstOcc.setDate(firstOcc.getDate() + 1);
+        return firstOcc.toISOString().split('T')[0];
+    }
+    if (freq === 'monthly' || freq === 'quarterly') {
+        const target = new Date(d.getFullYear(), d.getMonth(), h.targetDay);
+        return target.toISOString().split('T')[0];
+    }
+    return today();
+}
+
+// Human-readable label for the target day (e.g. "Saturdays", "15th of each month")
+function targetDayLabel(h) {
+    const freq = h.freq || 'daily';
+    if (freq === 'daily' || h.targetDay == null) return null;
+    if (freq === 'weekly')    return DOW_NAMES[h.targetDay] + 's';
+    if (freq === 'biweekly')  return 'Every other ' + DOW_NAMES[h.targetDay];
+    if (freq === 'monthly')   return ordinal(h.targetDay) + ' of each month';
+    if (freq === 'quarterly') return ordinal(h.targetDay) + ' each quarter';
+    return null;
+}
+
+// Build <option> elements for the target-day <select> based on frequency
+function buildTargetDayOptions(freq, currentVal) {
+    if (freq === 'weekly' || freq === 'biweekly') {
+        return DOW_NAMES.map((name, i) =>
+            `<option value="${i}" ${currentVal == i ? 'selected' : ''}>${name}</option>`
+        ).join('');
+    }
+    if (freq === 'monthly' || freq === 'quarterly') {
+        return Array.from({ length: 28 }, (_, i) => i + 1).map(n =>
+            `<option value="${n}" ${currentVal == n ? 'selected' : ''}>${ordinal(n)}</option>`
+        ).join('');
+    }
+    return '';
+}
+
+// Show/hide the target-day picker in the ADD form when frequency changes
+function onFreqChange() {
+    const freq = document.getElementById('habitFreq').value;
+    const row  = document.getElementById('targetDayRow');
+    const lbl  = document.getElementById('targetDayLabel');
+    const sel  = document.getElementById('habitTargetDay');
+    if (freq === 'daily' || freq === 'weekdays') { row.style.display = 'none'; return; }
+    row.style.display = 'flex';
+    lbl.textContent = freq === 'weekly'    ? 'Which day of the week?' :
+                      freq === 'biweekly'  ? 'Which day? (every other week)' :
+                      freq === 'monthly'   ? 'Which day of the month?' :
+                                             'Which day of the month? (each quarter)';
+    sel.innerHTML = buildTargetDayOptions(freq, sel.value || 0);
+}
+
+// Show/hide the target-day picker in EDIT forms when frequency changes
+function onEditFreqChange(id) {
+    const freq = document.getElementById('edit-habit-freq-' + id).value;
+    const row  = document.getElementById('edit-target-day-row-' + id);
+    const lbl  = document.getElementById('edit-target-day-label-' + id);
+    const sel  = document.getElementById('edit-habit-target-' + id);
+    if (!row) return;
+    if (freq === 'daily' || freq === 'weekdays') { row.style.display = 'none'; return; }
+    row.style.display = 'flex';
+    lbl.textContent = freq === 'weekly'    ? 'Which day of the week?' :
+                      freq === 'biweekly'  ? 'Which day? (every other week)' :
+                      freq === 'monthly'   ? 'Which day of the month?' :
+                                             'Which day of the month? (each quarter)';
+    sel.innerHTML = buildTargetDayOptions(freq, sel.value || 0);
+}
+
+// Returns a stable string identifying which period a date falls in, per frequency.
+// e.g. daily="2024-07-15", weekly="W-2024-07-08" (Monday), monthly="2024-07", quarterly="2024-Q3"
+function getPeriodKey(dateStr, freq) {
+    const d = new Date(dateStr + 'T12:00:00');
+    switch (freq || 'daily') {
+        case 'daily':
+        case 'weekdays': return dateStr; // each day is its own period key
+        case 'weekly': {
+            // Key = ISO date of the Monday that starts this week
+            const day  = d.getDay();                       // 0=Sun … 6=Sat
+            const diff = day === 0 ? -6 : 1 - day;        // offset to Monday
+            const mon  = new Date(d);
+            mon.setDate(d.getDate() + diff);
+            return 'W-' + mon.toISOString().split('T')[0];
+        }
+        case 'biweekly': {
+            // Count 14-day blocks since a fixed anchor (2024-01-01)
+            const ref  = new Date('2024-01-01T12:00:00');
+            const days = Math.floor((d - ref) / 86400000);
+            return 'BW-' + Math.floor(Math.max(days, 0) / 14);
+        }
+        case 'monthly':
+            return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+        case 'quarterly':
+            return d.getFullYear() + '-Q' + (Math.floor(d.getMonth() / 3) + 1);
+        default: return dateStr;
+    }
+}
+
+// Returns a new Date moved one period earlier (used to walk backwards through periods).
+function prevPeriodDate(d, freq) {
+    const r = new Date(d);
+    switch (freq || 'daily') {
+        case 'daily':     r.setDate(r.getDate() - 1);   break;
+        case 'weekdays': {
+            // Step back one day, then keep stepping back until we land on a weekday
+            r.setDate(r.getDate() - 1);
+            while (r.getDay() === 0 || r.getDay() === 6) r.setDate(r.getDate() - 1);
+            break;
+        }
+        case 'weekly':    r.setDate(r.getDate() - 7);   break;
+        case 'biweekly':  r.setDate(r.getDate() - 14);  break;
+        case 'monthly':   r.setMonth(r.getMonth() - 1); break;
+        case 'quarterly': r.setMonth(r.getMonth() - 3); break;
+    }
+    return r;
+}
+
+// Returns n date strings (oldest first), one representative date per period, ending at today.
+function lastNPeriods(n, freq) {
+    const result = [];
+    let d = new Date(today() + 'T12:00:00');
+    // For weekdays habits, start from the most recent weekday (skip back over any weekend)
+    if (freq === 'weekdays' && (d.getDay() === 0 || d.getDay() === 6)) {
+        while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() - 1);
+    }
+    for (let i = 0; i < n; i++) {
+        result.unshift(d.toISOString().split('T')[0]);
+        d = prevPeriodDate(d, freq);
+    }
+    return result;
+}
+
+// True if the habit has been checked off in the current period.
+function isDonePeriod(h) {
+    const freq = h.freq || 'daily';
+    if (freq === 'weekdays') {
+        const dow = new Date(today() + 'T12:00:00').getDay();
+        if (dow === 0 || dow === 6) return true; // weekend: no action needed, treat as on-track
+    }
+    const key = getPeriodKey(today(), freq);
+    return h.completedDays.some(d => getPeriodKey(d, freq) === key);
+}
+
+function addHabit() {
+    const inp  = document.getElementById('habitInput');
+    const name = inp.value.trim();
+    if (!name) { inp.focus(); return; }
+    const freq  = document.getElementById('habitFreq').value;
+    const habit = { id: Date.now(), name, freq, completedDays: [] };
+    if (freq !== 'daily' && freq !== 'weekdays') {
+        const targetVal = document.getElementById('habitTargetDay').value;
+        habit.targetDay = parseInt(targetVal, 10);
+    }
+    habits.unshift(habit);
+    save('habits', habits);
+    inp.value = '';
+    document.getElementById('habitFreq').value = 'daily';
+    document.getElementById('targetDayRow').style.display = 'none';
+    renderHabits();
+    toast('Habit added! ✨');
+}
+
+function toggleHabit(id) {
+    const h = habits.find(h => h.id === id);
+    if (!h) return;
+    const freq = h.freq || 'daily';
+    const key  = getPeriodKey(today(), freq);
+    // Find an existing completion that belongs to the current period
+    const idx  = h.completedDays.findIndex(d => getPeriodKey(d, freq) === key);
+    if (idx === -1) {
+        h.completedDays.push(getCanonicalDate(h));
+        toast('Habit checked! Keep it up 🔥');
+    } else {
+        h.completedDays.splice(idx, 1);
+    }
+    save('habits', habits);
+    renderHabits();
+}
+
+function deleteHabit(id) {
+    habits = habits.filter(h => h.id !== id);
+    save('habits', habits);
+    renderHabits();
+    toast('Habit removed');
+}
+
+function editHabit(id) {
+    editingHabitId = id;
+    renderHabits();
+    setTimeout(() => {
+        const inp = document.getElementById('edit-habit-' + id);
+        if (inp) { inp.focus(); inp.select(); }
+    }, 10);
+}
+
+function saveHabit(id) {
+    const inp       = document.getElementById('edit-habit-' + id);
+    const freqSel   = document.getElementById('edit-habit-freq-' + id);
+    const targetSel = document.getElementById('edit-habit-target-' + id);
+    if (!inp) return;
+    const newName = inp.value.trim();
+    if (!newName) { inp.focus(); return; }
+    const h = habits.find(h => h.id === id);
+    if (h) {
+        h.name = newName;
+        if (freqSel) {
+            h.freq = freqSel.value;
+            if (h.freq !== 'daily' && h.freq !== 'weekdays' && targetSel) {
+                h.targetDay = parseInt(targetSel.value, 10);
+            } else {
+                delete h.targetDay;
+            }
+        }
+        save('habits', habits);
+    }
+    editingHabitId = null;
+    renderHabits();
+    toast('Habit updated! ✏️');
+}
+
+function cancelEditHabit() {
+    editingHabitId = null;
+    renderHabits();
+}
+
+// Counts consecutive completed periods going back from the most recent one.
+// Streak is preserved if the current period isn't done yet (you still have time).
+function calcStreak(completedDays, freq) {
+    freq = freq || 'daily';
+    if (!completedDays.length) return 0;
+
+    const doneKeys   = new Set(completedDays.map(d => getPeriodKey(d, freq)));
+    const currentKey = getPeriodKey(today(), freq);
+
+    // Start from current period if it's done; otherwise from the previous period
+    let d = new Date(today() + 'T12:00:00');
+    if (!doneKeys.has(currentKey)) d = prevPeriodDate(d, freq);
+
+    let streak = 0;
+    for (let i = 0; i < 10000; i++) {
+        const key = getPeriodKey(d.toISOString().split('T')[0], freq);
+        if (doneKeys.has(key)) { streak++; d = prevPeriodDate(d, freq); }
+        else break;
+    }
+    return streak;
+}
+
+function renderHabits() {
+    const onTrack    = habits.filter(h => isDonePeriod(h)).length;
+    const bestStreak = habits.reduce((mx, h) => Math.max(mx, calcStreak(h.completedDays, h.freq)), 0);
+    document.getElementById('stat-total').textContent = habits.length;
+    document.getElementById('stat-today').textContent = onTrack;
+    document.getElementById('stat-best').textContent  = bestStreak;
+
+    const list = document.getElementById('habitsList');
+
+    if (!habits.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div>
+            <p>No habits yet.<br>Add your first habit above to get started!</p></div>`;
+        return;
+    }
+
+    list.innerHTML = habits.map(h => {
+        const freq     = h.freq || 'daily';
+        const donePer  = isDonePeriod(h);
+        const streak   = calcStreak(h.completedDays, freq);
+        const unit     = FREQ_UNITS[freq] || 'day';
+        const label    = FREQ_LABELS[freq] || 'Daily';
+        const numDots  = freq === 'quarterly' ? 4 : 7;
+        const periods  = lastNPeriods(numDots, freq);
+        const curKey   = getPeriodKey(today(), freq);
+        const doneKeys = new Set(h.completedDays.map(d => getPeriodKey(d, freq)));
+        const tdLabel  = targetDayLabel(h);
+
+        const dots = periods.map(date => {
+            const key    = getPeriodKey(date, freq);
+            const isDone = doneKeys.has(key);
+            const isCur  = key === curKey;
+            return `<div class="dot ${isDone ? (isCur ? 'today-done' : 'done') : ''}" title="${date}"></div>`;
+        }).join('');
+
+        // Build the <select> for editing, with the current freq pre-selected
+        const freqOptions = FREQ_OPTS.map(o =>
+            `<option value="${o.v}" ${freq === o.v ? 'selected' : ''}>${o.l}</option>`
+        ).join('');
+
+        if (h.id === editingHabitId) {
+            // ── EDITING MODE ──
+            const showTargetRow = freq !== 'daily';
+            const editTargetOpts = buildTargetDayOptions(freq, h.targetDay);
+            const editTargetLbl  = freq === 'weekly'    ? 'Which day of the week?' :
+                                   freq === 'biweekly'  ? 'Which day? (every other week)' :
+                                   freq === 'monthly'   ? 'Which day of the month?' :
+                                                          'Which day of the month? (each quarter)';
+            return `
+            <div class="habit-item editing">
+                <div class="habit-circle ${donePer ? 'checked' : ''}" onclick="toggleHabit(${h.id})">✓</div>
+                <div class="habit-info" style="flex:1">
+                    <div class="habit-edit-row">
+                        <input type="text" class="edit-input" id="edit-habit-${h.id}"
+                               value="${safeAttr(h.name)}" style="min-width:120px"
+                               onkeydown="if(event.key==='Enter') saveHabit(${h.id}); if(event.key==='Escape') cancelEditHabit()">
+                        <select id="edit-habit-freq-${h.id}"
+                                style="flex:none;width:auto;font-size:13px;padding:7px 10px"
+                                onchange="onEditFreqChange(${h.id})">${freqOptions}</select>
+                        <button class="btn-save" onclick="saveHabit(${h.id})">Save</button>
+                        <button class="btn-cancel" onclick="cancelEditHabit()">Cancel</button>
+                    </div>
+                    <div class="target-day-row" id="edit-target-day-row-${h.id}" style="display:${showTargetRow ? 'flex' : 'none'}">
+                        <label id="edit-target-day-label-${h.id}">${editTargetLbl}</label>
+                        <select id="edit-habit-target-${h.id}" style="flex:1">${editTargetOpts}</select>
+                    </div>
+                    <div class="habit-meta">
+                        <span class="streak-pill">🔥 ${streak} ${unit}${streak !== 1 ? 's' : ''}</span>
+                        <div class="week-dots">${dots}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // ── NORMAL MODE ──
+        return `
+        <div class="habit-item ${donePer ? 'done-today' : ''}">
+            <div class="habit-circle ${donePer ? 'checked' : ''}" onclick="toggleHabit(${h.id})" title="Mark complete">✓</div>
+            <div class="habit-info">
+                <div class="habit-name-row">
+                    <span class="habit-name">${safe(h.name)}</span>
+                    <span class="freq-badge">${label}</span>
+                    ${tdLabel ? `<span class="target-day-badge">${safe(tdLabel)}</span>` : ''}
+                </div>
+                <div class="habit-meta">
+                    <span class="streak-pill">🔥 ${streak} ${unit}${streak !== 1 ? 's' : ''}</span>
+                    <div class="week-dots" title="Last ${numDots} ${unit}s">${dots}</div>
+                </div>
+            </div>
+            <button class="btn btn-edit" onclick="editHabit(${h.id})" title="Edit habit">✏</button>
+            <button class="btn btn-ghost" onclick="deleteHabit(${h.id})" title="Remove">×</button>
+        </div>`;
+    }).join('');
+}
+
+
+/* ════════════════════════════════════════════════════
+   TO-DO LIST
+   ════════════════════════════════════════════════════ */
+
+let todos = load('todos');
+let filter = 'all';
+let editingTodoId = null;
+
+function addTodo() {
+    const inp  = document.getElementById('todoInput');
+    const text = inp.value.trim();
+    if (!text) { inp.focus(); return; }
+    todos.unshift({
+        id: Date.now(), text,
+        priority: document.getElementById('todoPriority').value,
+        category: document.getElementById('todoCategory').value.trim(),
+        dueDate:  document.getElementById('todoDueDate').value || null,
+        done: false
+    });
+    save('todos', todos);
+    inp.value = '';
+    document.getElementById('todoCategory').value = '';
+    document.getElementById('todoDueDate').value = '';
+    renderTodos();
+    toast('Task added! 📋');
+}
+
+function toggleTodo(id) {
+    const t = todos.find(t => t.id === id);
+    if (!t) return;
+    t.done = !t.done;
+    save('todos', todos);
+    renderTodos();
+    if (t.done) toast('Task complete! ✅');
+}
+
+function deleteTodo(id) {
+    todos = todos.filter(t => t.id !== id);
+    save('todos', todos);
+    renderTodos();
+    toast('Task removed');
+}
+
+function editTodo(id) {
+    editingTodoId = id;
+    renderTodos();
+    setTimeout(() => {
+        const inp = document.getElementById('edit-todo-' + id);
+        if (inp) { inp.focus(); inp.select(); }
+    }, 10);
+}
+
+function saveTodo(id) {
+    const textInp = document.getElementById('edit-todo-' + id);
+    const priSel  = document.getElementById('edit-todo-pri-' + id);
+    const catInp  = document.getElementById('edit-todo-cat-' + id);
+    const dateInp = document.getElementById('edit-todo-date-' + id);
+    if (!textInp) return;
+    const newText = textInp.value.trim();
+    if (!newText) { textInp.focus(); return; }
+    const t = todos.find(t => t.id === id);
+    if (t) {
+        t.text     = newText;
+        t.priority = priSel.value;
+        t.category = catInp.value.trim();
+        if (dateInp) t.dueDate = dateInp.value || null;
+        save('todos', todos);
+    }
+    editingTodoId = null;
+    renderTodos();
+    toast('Task updated! ✏️');
+}
+
+function cancelEditTodo() {
+    editingTodoId = null;
+    renderTodos();
+}
+
+function setFilter(f, btn) {
+    filter = f;
+    document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderTodos();
+}
+
+function renderTodos() {
+    const list  = document.getElementById('todosList');
+    const order = { high: 0, medium: 1, low: 2 };
+
+    let items = todos;
+    if (filter === 'active') items = todos.filter(t => !t.done);
+    if (filter === 'done')   items = todos.filter(t =>  t.done);
+
+    items = [...items].sort((a, b) => {
+        if (a.done !== b.done) return a.done ? 1 : -1;
+        return (order[a.priority] ?? 1) - (order[b.priority] ?? 1);
+    });
+
+    if (!items.length) {
+        const msgs = { all: ['📝','No tasks yet. Add one above!'], active: ['🎉','All caught up!'], done: ['⏳','No completed tasks yet.'] };
+        const [icon, msg] = msgs[filter];
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">${icon}</div><p>${msg}</p></div>`;
+        return;
+    }
+
+    list.innerHTML = items.map(t => {
+        if (t.id === editingTodoId) {
+            // ── EDITING MODE ──
+            const priOptions = ['high','medium','low'].map(p =>
+                `<option value="${p}" ${t.priority === p ? 'selected' : ''}>${{high:'🔴 High',medium:'⚡ Medium',low:'🟢 Low'}[p]}</option>`
+            ).join('');
+
+            return `
+            <div class="todo-item p-${t.priority} editing">
+                <div class="todo-edit-form">
+                    <input type="text" class="edit-input" id="edit-todo-${t.id}"
+                           value="${safeAttr(t.text)}"
+                           onkeydown="if(event.key==='Escape') cancelEditTodo()">
+                    <div class="todo-edit-row">
+                        <select id="edit-todo-pri-${t.id}">${priOptions}</select>
+                        <input type="text" class="cat-edit" id="edit-todo-cat-${t.id}"
+                               value="${safeAttr(t.category)}" placeholder="Category (optional)">
+                        <button class="btn-save" onclick="saveTodo(${t.id})">Save</button>
+                        <button class="btn-cancel" onclick="cancelEditTodo()">Cancel</button>
+                    </div>
+                    <div class="target-day-row" style="margin-top:6px">
+                        <label style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">📅 Due date</label>
+                        <input type="date" id="edit-todo-date-${t.id}"
+                               value="${safeAttr(t.dueDate || '')}"
+                               style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card);min-width:0">
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // ── NORMAL MODE ──
+        return `
+        <div class="todo-item p-${t.priority} ${t.done ? 'is-done' : ''}">
+            <div class="todo-square ${t.done ? 'checked' : ''}" onclick="toggleTodo(${t.id})">✓</div>
+            <div class="todo-body">
+                <div class="todo-text">${safe(t.text)}</div>
+                <div class="badge-row">
+                    <span class="badge badge-${t.priority}">${t.priority}</span>
+                    ${t.category ? `<span class="badge badge-cat">${safe(t.category)}</span>` : ''}
+                    ${t.dueDate  ? `<span class="badge badge-date">📅 ${formatDate(t.dueDate)}</span>` : ''}
+                </div>
+            </div>
+            <button class="btn btn-edit" onclick="editTodo(${t.id})" title="Edit task">✏</button>
+            <button class="btn btn-ghost" onclick="deleteTodo(${t.id})" title="Remove">×</button>
+        </div>`;
+    }).join('');
+}
+
+
+/* ════════════════════════════════════════════════════
+   GOALS & MILESTONES
+   ════════════════════════════════════════════════════ */
+
+let goals        = load('goals');
+let editingGoalId = null;
+let editingMsKey  = null;   // "goalId-msId"
+
+function addGoal() {
+    const inp   = document.getElementById('goalInput');
+    const title = inp.value.trim();
+    if (!title) { inp.focus(); return; }
+    goals.unshift({
+        id: Date.now(), title,
+        category:   document.getElementById('goalCategory').value,
+        targetDate: document.getElementById('goalTargetDate').value || null,
+        milestones: []
+    });
+    save('goals', goals);
+    inp.value = '';
+    document.getElementById('goalTargetDate').value = '';
+    renderGoals();
+    toast('Goal created! Now add milestones 🎯');
+}
+
+function deleteGoal(id) {
+    goals = goals.filter(g => g.id !== id);
+    save('goals', goals);
+    renderGoals();
+    toast('Goal removed');
+}
+
+function editGoal(id) {
+    editingGoalId = id;
+    renderGoals();
+    setTimeout(() => {
+        const inp = document.getElementById('edit-goal-' + id);
+        if (inp) { inp.focus(); inp.select(); }
+    }, 10);
+}
+
+function saveGoal(id) {
+    const inp     = document.getElementById('edit-goal-' + id);
+    const catSel  = document.getElementById('edit-goal-cat-' + id);
+    const dateInp = document.getElementById('edit-goal-date-' + id);
+    if (!inp) return;
+    const newTitle = inp.value.trim();
+    if (!newTitle) { inp.focus(); return; }
+    const g = goals.find(g => g.id === id);
+    if (g) {
+        g.title = newTitle;
+        if (catSel)  g.category   = catSel.value;
+        if (dateInp) g.targetDate = dateInp.value || null;
+        save('goals', goals);
+    }
+    editingGoalId = null;
+    renderGoals();
+    toast('Goal updated! ✏️');
+}
+
+function cancelEditGoal() {
+    editingGoalId = null;
+    renderGoals();
+}
+
+function addMilestone(goalId) {
+    const inp  = document.getElementById('ms-input-' + goalId);
+    const text = inp.value.trim();
+    if (!text) { inp.focus(); return; }
+    const g = goals.find(g => g.id === goalId);
+    if (g) {
+        g.milestones.push({ id: Date.now(), text, done: false });
+        save('goals', goals);
+        renderGoals();
+        setTimeout(() => {
+            const el = document.getElementById('ms-input-' + goalId);
+            if (el) el.focus();
+        }, 50);
+    }
+}
+
+function toggleMilestone(goalId, msId) {
+    const g = goals.find(g => g.id === goalId);
+    if (!g) return;
+    const ms = g.milestones.find(m => m.id === msId);
+    if (!ms) return;
+    ms.done = !ms.done;
+    save('goals', goals);
+    renderGoals();
+    if (ms.done) toast('Milestone reached! 🌟');
+}
+
+function deleteMilestone(goalId, msId) {
+    const g = goals.find(g => g.id === goalId);
+    if (g) {
+        g.milestones = g.milestones.filter(m => m.id !== msId);
+        save('goals', goals);
+        renderGoals();
+    }
+}
+
+function editMilestone(goalId, msId) {
+    editingMsKey = goalId + '-' + msId;
+    renderGoals();
+    setTimeout(() => {
+        const inp = document.getElementById('edit-ms-' + goalId + '-' + msId);
+        if (inp) { inp.focus(); inp.select(); }
+    }, 10);
+}
+
+function saveMilestone(goalId, msId) {
+    const inp = document.getElementById('edit-ms-' + goalId + '-' + msId);
+    if (!inp) return;
+    const newText = inp.value.trim();
+    if (!newText) { inp.focus(); return; }
+    const g = goals.find(g => g.id === goalId);
+    if (g) {
+        const ms = g.milestones.find(m => m.id === msId);
+        if (ms) { ms.text = newText; save('goals', goals); }
+    }
+    editingMsKey = null;
+    renderGoals();
+    toast('Milestone updated! ✏️');
+}
+
+function cancelEditMilestone() {
+    editingMsKey = null;
+    renderGoals();
+}
+
+function renderGoals() {
+    const list = document.getElementById('goalsList');
+
+    if (!goals.length) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">🌟</div>
+            <p>No goals yet.<br>Set your first goal above and break it into milestones!</p></div>`;
+        return;
+    }
+
+    list.innerHTML = goals.map(g => {
+        const total    = g.milestones.length;
+        const done     = g.milestones.filter(m => m.done).length;
+        const pct      = total === 0 ? 0 : Math.round((done / total) * 100);
+        const complete = total > 0 && done === total;
+
+        // Build the category <option> list for editing
+        const GOAL_CATS = ['Health & Fitness','Finance & Wealth','Career & Learning','Relationships','Personal Growth','Travel','Creative','Other'];
+        const catOptions = GOAL_CATS.map(c =>
+            `<option value="${safeAttr(c)}" ${g.category === c ? 'selected' : ''}>${safe(c)}</option>`
+        ).join('');
+
+        // ── Goal title: normal or editing ──
+        const titleSection = (g.id === editingGoalId) ? `
+            <div class="goal-edit-row">
+                <input type="text" class="edit-input" id="edit-goal-${g.id}"
+                       value="${safeAttr(g.title)}"
+                       onkeydown="if(event.key==='Enter') saveGoal(${g.id}); if(event.key==='Escape') cancelEditGoal()">
+                <button class="btn-save" onclick="saveGoal(${g.id})">Save</button>
+                <button class="btn-cancel" onclick="cancelEditGoal()">Cancel</button>
+            </div>
+            <div class="target-day-row" style="margin-top:8px">
+                <select id="edit-goal-cat-${g.id}" style="flex:1;font-size:13px">${catOptions}</select>
+                <input type="date" id="edit-goal-date-${g.id}"
+                       value="${safeAttr(g.targetDate || '')}"
+                       style="flex:none;font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card)">
+            </div>` : `
+            <div class="goal-title">${complete ? '🏆 ' : ''}${safe(g.title)}</div>
+            <div class="badge-row" style="margin-top:4px">
+                ${g.category   ? `<span class="badge badge-goalcat">${safe(g.category)}</span>` : ''}
+                ${g.targetDate ? `<span class="badge badge-date">🎯 ${formatDate(g.targetDate)}</span>` : ''}
+            </div>`;
+
+        // ── Action buttons (only when not editing the title) ──
+        const actionBtns = (g.id !== editingGoalId) ? `
+            <div style="display:flex;align-items:center;gap:6px">
+                <span class="goal-pct">${pct}%</span>
+                <button class="btn btn-edit" onclick="editGoal(${g.id})" title="Edit goal">✏</button>
+                <button class="btn btn-ghost" onclick="deleteGoal(${g.id})" title="Remove goal">×</button>
+            </div>` : `
+            <span class="goal-pct">${pct}%</span>`;
+
+        // ── Milestones ──
+        const msHtml = g.milestones.map(ms => {
+            const key       = g.id + '-' + ms.id;
+            const isEditing = editingMsKey === key;
+
+            if (isEditing) {
+                return `
+                <div class="milestone ms-editing">
+                    <div class="milestone-circle"></div>
+                    <div class="ms-edit-row">
+                        <input type="text" class="edit-input" id="edit-ms-${g.id}-${ms.id}"
+                               value="${safeAttr(ms.text)}"
+                               onkeydown="if(event.key==='Enter') saveMilestone(${g.id},${ms.id}); if(event.key==='Escape') cancelEditMilestone()">
+                        <button class="btn-save" onclick="saveMilestone(${g.id},${ms.id})">Save</button>
+                        <button class="btn-cancel" onclick="cancelEditMilestone()">Cancel</button>
+                    </div>
+                </div>`;
+            }
+
+            return `
+            <div class="milestone ${ms.done ? 'ms-done' : ''}"
+                 onclick="toggleMilestone(${g.id}, ${ms.id})">
+                <div class="milestone-circle">✓</div>
+                <span class="milestone-label">${safe(ms.text)}</span>
+                <button class="btn btn-edit" style="padding:3px 6px;font-size:13px"
+                        onclick="event.stopPropagation(); editMilestone(${g.id}, ${ms.id})"
+                        title="Edit milestone">✏</button>
+                <button class="btn btn-ghost" style="padding:3px 6px;font-size:14px"
+                        onclick="event.stopPropagation(); deleteMilestone(${g.id}, ${ms.id})"
+                        title="Remove milestone">×</button>
+            </div>`;
+        }).join('');
+
+        return `
+        <div class="goal-card ${complete ? 'is-complete' : ''}">
+            <div class="goal-top">
+                ${titleSection}
+                ${actionBtns}
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill ${complete ? 'complete' : ''}" style="width:${pct}%"></div>
+            </div>
+            <div class="progress-meta">
+                ${done} of ${total} milestone${total !== 1 ? 's' : ''} complete
+                ${complete ? ' · 🎉 Achieved!' : ''}
+            </div>
+            <div class="milestones">
+                ${msHtml || '<p style="font-size:13px;color:var(--muted);padding:4px 0">No milestones yet — add one below!</p>'}
+            </div>
+            <div class="ms-add-row">
+                <input type="text" id="ms-input-${g.id}"
+                       placeholder="Add a milestone step..."
+                       onkeydown="if(event.key==='Enter') addMilestone(${g.id})">
+                <button class="btn btn-primary btn-sm" onclick="addMilestone(${g.id})">+ Add</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+/* ════════════════════════════════════════════════════
+   CALENDAR VIEW
+   ════════════════════════════════════════════════════ */
+
+let calYear, calMonth;    // currently displayed month
+
+const CAL_MONTH_NAMES = [
+    'January','February','March','April','May','June',
+    'July','August','September','October','November','December'
+];
+const CAL_DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function initCalendar() {
+    const now = new Date();
+    calYear   = now.getFullYear();
+    calMonth  = now.getMonth();   // 0-indexed
+}
+
+
+function calPrev() {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+}
+
+function calNext() {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+}
+
+// Toggle a habit's completion for a specific calendar date.
+// Respects frequency: toggling any day in a period marks/unmarks that whole period.
+function calToggleHabit(habitId, dateStr) {
+    const h = habits.find(h => h.id === habitId);
+    if (!h) return;
+    const freq = h.freq || 'daily';
+    const key  = getPeriodKey(dateStr, freq);
+    // Find an existing completion that belongs to the same period
+    const idx  = h.completedDays.findIndex(d => getPeriodKey(d, freq) === key);
+    if (idx === -1) {
+        h.completedDays.push(dateStr);
+    } else {
+        h.completedDays.splice(idx, 1);
+    }
+    save('habits', habits);
+    renderCalendar();
+    // Also refresh the list view stats
+    renderHabits();
+}
+
+// Toggle a to-do's done state from the calendar view
+function calToggleTodo(id) {
+    const t = todos.find(t => t.id === id);
+    if (!t) return;
+    t.done = !t.done;
+    save('todos', todos);
+    renderCalendar();
+    renderTodos();
+    if (t.done) toast('Task complete! ✅');
+}
+
+function renderCalendar() {
+    const container = document.getElementById('calendarView');
+    if (!container) return;
+
+    const todayStr   = today();
+    const firstOfMonth = new Date(calYear, calMonth, 1);
+    const daysInMonth  = new Date(calYear, calMonth + 1, 0).getDate();
+    const startDow     = firstOfMonth.getDay(); // 0 = Sunday
+
+    // Pre-compute a set of completed period keys per habit for fast lookup
+    const habitDoneKeys = habits.map(h => ({
+        ...h,
+        freq: h.freq || 'daily',
+        keys: new Set(h.completedDays.map(d => getPeriodKey(d, h.freq || 'daily')))
+    }));
+
+    // ── Day-of-week header ──
+    const dowHtml = CAL_DOW.map(d =>
+        `<div class="cal-dow">${d}</div>`
+    ).join('');
+
+    // ── Empty leading cells ──
+    let cellsHtml = '';
+    for (let i = 0; i < startDow; i++) {
+        cellsHtml += `<div class="cal-cell cal-empty"></div>`;
+    }
+
+    // ── Day cells ──
+    for (let d = 1; d <= daysInMonth; d++) {
+        const mm      = String(calMonth + 1).padStart(2, '0');
+        const dd      = String(d).padStart(2, '0');
+        const dateStr = `${calYear}-${mm}-${dd}`;
+        const isToday = dateStr === todayStr;
+        const isPast  = dateStr < todayStr;
+
+        // Day number — today gets a filled circle
+        const dayNumHtml = isToday
+            ? `<div class="cal-day-num"><span class="is-today">${d}</span></div>`
+            : `<div class="cal-day-num">${d}</div>`;
+
+        // ── Habits ──
+        let habitsInCell = '';
+        if (habits.length === 0) {
+            habitsInCell = `<div class="cal-no-habits">No habits</div>`;
+        } else {
+            habitsInCell = habitDoneKeys.filter(h => shouldShowHabitOnDate(h, dateStr)).map(h => {
+                const key    = getPeriodKey(dateStr, h.freq);
+                const isDone = h.keys.has(key);
+                return `
+                <div class="cal-habit ${isDone ? 'done' : ''}"
+                     onclick="calToggleHabit(${h.id}, '${dateStr}')"
+                     title="${safeAttr(h.name)} — click to toggle">
+                    <div class="cal-circle ${isDone ? 'done' : ''}">✓</div>
+                    <span class="cal-hname">🔥 ${safe(h.name)}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // ── To-Dos with matching due date ──
+        const todosInCell = todos.filter(t => t.dueDate === dateStr).map(t => `
+                <div class="cal-todo ${t.done ? 'is-done' : ''}"
+                     onclick="calToggleTodo(${t.id})"
+                     title="${safeAttr(t.text)} — click to toggle">
+                    <div class="cal-circle ${t.done ? 'done' : ''}">✓</div>
+                    <span class="cal-hname">✅ ${safe(t.text)}</span>
+                </div>`).join('');
+
+        // ── Goals with matching target date ──
+        const goalsInCell = goals.filter(g => g.targetDate === dateStr).map(g => `
+                <div class="cal-goal" title="${safeAttr(g.title)}">
+                    <div class="cal-circle"></div>
+                    <span class="cal-hname">🎯 ${safe(g.title)}</span>
+                </div>`).join('');
+
+        cellsHtml += `
+        <div class="cal-cell ${isToday ? 'cal-today' : (isPast ? 'cal-past' : '')}">
+            ${dayNumHtml}
+            <div class="cal-habits-list">${habitsInCell}${todosInCell}${goalsInCell}</div>
+        </div>`;
+    }
+
+    // ── Trailing empty cells to complete the last row ──
+    const totalCells = startDow + daysInMonth;
+    const remainder  = totalCells % 7;
+    if (remainder !== 0) {
+        for (let i = 0; i < 7 - remainder; i++) {
+            cellsHtml += `<div class="cal-cell cal-empty"></div>`;
+        }
+    }
+
+    container.innerHTML = `
+    <div class="cal-card">
+        <div class="cal-header">
+            <button class="cal-nav-btn" onclick="calPrev()" title="Previous month">&#8249;</button>
+            <div class="cal-month-label">${CAL_MONTH_NAMES[calMonth]} ${calYear}</div>
+            <button class="cal-nav-btn" onclick="calNext()" title="Next month">&#8250;</button>
+        </div>
+        <div class="cal-grid">
+            ${dowHtml}
+            ${cellsHtml}
+        </div>
+    </div>`;
+}
+
+/* ════════════════════════════════════════════════════
+   DAILY QUOTE
+   ════════════════════════════════════════════════════ */
+
+const QUOTES = [
+    { text: "We are what we repeatedly do. Excellence, then, is not an act, but a habit.", author: "Aristotle" },
+    { text: "Every action you take is a vote for the person you wish to become.", author: "James Clear" },
+    { text: "The secret of getting ahead is getting started.", author: "Mark Twain" },
+    { text: "Small daily improvements over time lead to stunning results.", author: "Robin Sharma" },
+    { text: "What you do every day matters more than what you do once in a while.", author: "Gretchen Rubin" },
+    { text: "Motivation is what gets you started. Habit is what keeps you going.", author: "Jim Ryun" },
+    { text: "You will never change your life until you change something you do daily.", author: "Mike Murdock" },
+    { text: "Success is the sum of small efforts, repeated day in and day out.", author: "Robert Collier" },
+    { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius" },
+    { text: "The man who moves a mountain begins by carrying away small stones.", author: "Confucius" },
+    { text: "A year from now you may wish you had started today.", author: "Karen Lamb" },
+    { text: "You don't have to be great to start, but you have to start to be great.", author: "Zig Ziglar" },
+    { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson" },
+    { text: "The journey of a thousand miles begins with one step.", author: "Lao Tzu" },
+    { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
+    { text: "Hard work beats talent when talent doesn't work hard.", author: "Tim Notke" },
+    { text: "Dream big. Start small. Act now.", author: "Robin Sharma" },
+    { text: "You don't need to see the whole staircase, just take the first step.", author: "Martin Luther King Jr." },
+    { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt" },
+    { text: "Fall seven times, stand up eight.", author: "Japanese Proverb" },
+    { text: "Goals are dreams with deadlines.", author: "Diana Scharf" },
+    { text: "The only way to do great work is to love what you do.", author: "Steve Jobs" },
+    { text: "Don't stop when you're tired. Stop when you're done.", author: "Unknown" },
+    { text: "One day or day one. You decide.", author: "Unknown" },
+    { text: "Consistency is the key to achieving and maintaining momentum.", author: "Darren Hardy" },
+    { text: "The pain of discipline is far less than the pain of regret.", author: "Sarah Bombell" },
+    { text: "Champions keep playing until they get it right.", author: "Billie Jean King" },
+    { text: "Life is 10% what happens to us and 90% how we react to it.", author: "Charles R. Swindoll" },
+    { text: "Your future is created by what you do today, not tomorrow.", author: "Robert Kiyosaki" },
+    { text: "The secret to getting results that last is to never stop making improvements.", author: "James Clear" },
+    { text: "We must all suffer one of two things: the pain of discipline or the pain of regret.", author: "Jim Rohn" },
+    { text: "Strive not to be a success, but rather to be of value.", author: "Albert Einstein" },
+    { text: "The future depends on what you do today.", author: "Mahatma Gandhi" },
+    { text: "In the middle of every difficulty lies opportunity.", author: "Albert Einstein" },
+    { text: "You are never too old to set another goal or to dream a new dream.", author: "C.S. Lewis" },
+];
+
+let quoteOffset = 0; // manual cycling offset (resets each session, so daily quote is always the default)
+
+function renderQuote() {
+    const dayIndex = Math.floor(Date.now() / 86400000); // days since Unix epoch
+    const q = QUOTES[(dayIndex + quoteOffset) % QUOTES.length];
+    document.getElementById('quoteText').textContent = q.text;
+    document.getElementById('quoteAuthor').textContent = '— ' + q.author;
+}
+
+function cycleQuote() {
+    quoteOffset = (quoteOffset + 1) % QUOTES.length;
+    renderQuote();
+    // Briefly animate the refresh button
+    const btn = document.querySelector('.quote-refresh');
+    if (btn) { btn.style.transform = 'rotate(360deg)'; setTimeout(() => btn.style.transform = '', 300); }
+}
+
+/* ── 로그인 / 회원가입 / 로그아웃 함수 ── */
+
+// 로그인 폼 ↔ 회원가입 폼 전환
+function toggleAuthForm() {
+    const err = document.getElementById('authError');
+    err.classList.remove('show');
+    const isLogin = document.getElementById('loginForm').style.display !== 'none';
+    document.getElementById('loginForm').style.display = isLogin ? 'none' : '';
+    document.getElementById('signupForm').style.display = isLogin ? '' : 'none';
+}
+
+// 에러 메시지 표시 (Firebase 에러코드를 한국어로)
+function showAuthError(code) {
+    const messages = {
+        'auth/user-not-found':      '이메일을 찾을 수 없어요. 회원가입을 먼저 해주세요.',
+        'auth/wrong-password':      '비밀번호가 틀렸어요.',
+        'auth/invalid-email':       '올바른 이메일 형식이 아니에요.',
+        'auth/email-already-in-use':'이미 사용 중인 이메일이에요.',
+        'auth/weak-password':       '비밀번호는 6자리 이상이어야 해요.',
+        'auth/invalid-credential':  '이메일 또는 비밀번호가 올바르지 않아요.',
+    };
+    const el = document.getElementById('authError');
+    el.textContent = messages[code] || '오류가 발생했어요. 다시 시도해주세요.';
+    el.classList.add('show');
+}
+
+// 로그인
+function doLogin() {
+    const email    = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    document.getElementById('authError').classList.remove('show');
+    auth.signInWithEmailAndPassword(email, password)
+        .catch(err => showAuthError(err.code));
+}
+
+// 회원가입
+function doSignup() {
+    const email    = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    document.getElementById('authError').classList.remove('show');
+    auth.createUserWithEmailAndPassword(email, password)
+        .catch(err => showAuthError(err.code));
+}
+
+// 로그아웃
+function doLogout() {
+    auth.signOut();
+}
+
+/* ── 인증 상태 감지: 로그인/로그아웃 시 자동 실행 ── */
+auth.onAuthStateChanged(async (user) => {
+    if (user) {
+        // 로그인됨
+        currentUid = user.uid;
+
+        // 사이드바에 이메일 표시
+        document.getElementById('sidebarUserEmail').textContent = user.email;
+
+        // 로그인 모달 숨기기
+        document.getElementById('authOverlay').classList.add('hidden');
+
+        // Firestore에서 데이터 불러오기 (다른 기기에서 저장한 데이터 포함)
+        await loadFromFirestore(user.uid);
+    } else {
+        // 로그아웃됨
+        currentUid = null;
+
+        // localStorage 초기화 (다른 사람이 같은 기기 쓸 때 데이터 노출 방지)
+        localStorage.removeItem('myflow_habits');
+        localStorage.removeItem('myflow_todos');
+        localStorage.removeItem('myflow_goals');
+        habits = []; todos = []; goals = [];
+        renderHabits(); renderTodos(); renderGoals();
+
+        // 로그인 모달 표시
+        document.getElementById('authOverlay').classList.remove('hidden');
+    }
+});
+
+/* ── Init ── */
+renderGreeting();
+initCalendar();
+renderQuote();
+renderCalendar();
+renderHabits();
+renderTodos();
+renderGoals();
+</script>
+</body>
+</html>
