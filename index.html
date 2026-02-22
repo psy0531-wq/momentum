@@ -70,9 +70,10 @@
         }
         .sidebar-logo-icon {
             width: 36px; height: 36px; flex-shrink: 0;
-            background: linear-gradient(135deg, var(--primary), var(--primary-light));
-            border-radius: 10px; display: flex; align-items: center; justify-content: center;
-            font-size: 17px; color: #fff; box-shadow: 0 4px 14px var(--primary-glow);
+            border-radius: 10px; overflow: hidden;
+        }
+        .sidebar-logo-icon img {
+            width: 100%; height: 100%; object-fit: cover;
         }
         .sidebar-logo-text { font-size: 19px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
 
@@ -850,7 +851,7 @@
 <div class="app-shell">
 <aside class="sidebar">
     <div class="sidebar-logo">
-        <div class="sidebar-logo-icon">✦</div>
+        <div class="sidebar-logo-icon"><img src="favicon_io/android-chrome-192x192.png" alt="Momentum logo"></div>
         <span class="sidebar-logo-text">Momentum</span>
     </div>
     <div class="sidebar-welcome">
