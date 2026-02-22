@@ -719,33 +719,37 @@
         <div id="authError" class="auth-error"></div>
         <!-- 로그인 폼 -->
         <div id="loginForm">
-            <div class="auth-title">다시 오셨네요!</div>
-            <div class="auth-sub">계속하려면 로그인하세요</div>
+            <div class="auth-title">Welcome back!</div>
+            <div class="auth-sub">Sign in to continue</div>
             <div class="auth-field">
-                <label>이메일</label>
+                <label>EMAIL</label>
                 <input type="email" id="loginEmail" placeholder="your@email.com">
             </div>
             <div class="auth-field">
-                <label>비밀번호</label>
-                <input type="password" id="loginPassword" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter') doLogin()">
+                <label>PASSWORD</label>
+                <input type="password" id="loginPassword" placeholder="Enter your password" onkeydown="if(event.key==='Enter') doLogin()">
             </div>
-            <button class="auth-btn" onclick="doLogin()">로그인</button>
-            <div class="auth-switch">계정이 없으신가요? <span onclick="toggleAuthForm()">회원가입</span></div>
+            <button class="auth-btn" onclick="doLogin()">Sign In</button>
+            <div class="auth-switch">Don't have an account? <span onclick="toggleAuthForm()">Sign Up</span></div>
         </div>
         <!-- 회원가입 폼 -->
         <div id="signupForm" style="display:none">
-            <div class="auth-title">Momentum 시작하기</div>
-            <div class="auth-sub">무료로 계정을 만드세요</div>
+            <div class="auth-title">Get started with Momentum</div>
+            <div class="auth-sub">Create your free account</div>
             <div class="auth-field">
-                <label>이메일</label>
+                <label>FIRST NAME</label>
+                <input type="text" id="signupName" placeholder="Your first name">
+            </div>
+            <div class="auth-field">
+                <label>EMAIL</label>
                 <input type="email" id="signupEmail" placeholder="your@email.com">
             </div>
             <div class="auth-field">
-                <label>비밀번호 (6자리 이상)</label>
-                <input type="password" id="signupPassword" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter') doSignup()">
+                <label>PASSWORD (min. 6 characters)</label>
+                <input type="password" id="signupPassword" placeholder="Create a password" onkeydown="if(event.key==='Enter') doSignup()">
             </div>
-            <button class="auth-btn" onclick="doSignup()">회원가입</button>
-            <div class="auth-switch">이미 계정이 있으신가요? <span onclick="toggleAuthForm()">로그인</span></div>
+            <button class="auth-btn" onclick="doSignup()">Create Account</button>
+            <div class="auth-switch">Already have an account? <span onclick="toggleAuthForm()">Sign In</span></div>
         </div>
     </div>
 </div>
@@ -1024,11 +1028,13 @@ function formatDate(dateStr) {
 document.getElementById('dateBadge').textContent =
     new Date().toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' });
 
-function renderGreeting() {
+function renderGreeting(name) {
     const hour = new Date().getHours();
-    const greeting = hour < 12 ? 'Good morning, Sophie 👋'
-                   : hour < 17 ? 'Good afternoon, Sophie 👋'
-                   :              'Good evening, Sophie 👋';
+    // 이름이 있으면 ", Name" 추가, 없으면 그냥 인사말만
+    const suffix = name ? `, ${name} 👋` : ' 👋';
+    const greeting = hour < 12 ? 'Good morning'  + suffix
+                   : hour < 17 ? 'Good afternoon' + suffix
+                   :              'Good evening'   + suffix;
     const el = document.getElementById('welcomeGreeting');
     if (el) el.textContent = greeting;
 }
@@ -2100,18 +2106,19 @@ function toggleAuthForm() {
     document.getElementById('signupForm').style.display = isLogin ? '' : 'none';
 }
 
-// 에러 메시지 표시 (Firebase 에러코드를 한국어로)
+// 에러 메시지 표시
 function showAuthError(code) {
     const messages = {
-        'auth/user-not-found':      '이메일을 찾을 수 없어요. 회원가입을 먼저 해주세요.',
-        'auth/wrong-password':      '비밀번호가 틀렸어요.',
-        'auth/invalid-email':       '올바른 이메일 형식이 아니에요.',
-        'auth/email-already-in-use':'이미 사용 중인 이메일이에요.',
-        'auth/weak-password':       '비밀번호는 6자리 이상이어야 해요.',
-        'auth/invalid-credential':  '이메일 또는 비밀번호가 올바르지 않아요.',
+        'auth/missing-name':        'Please enter your first name.',
+        'auth/user-not-found':      'No account found with this email. Please sign up first.',
+        'auth/wrong-password':      'Incorrect password. Please try again.',
+        'auth/invalid-email':       'Please enter a valid email address.',
+        'auth/email-already-in-use':'This email is already in use.',
+        'auth/weak-password':       'Password must be at least 6 characters.',
+        'auth/invalid-credential':  'Incorrect email or password.',
     };
     const el = document.getElementById('authError');
-    el.textContent = messages[code] || '오류가 발생했어요. 다시 시도해주세요.';
+    el.textContent = messages[code] || 'Something went wrong. Please try again.';
     el.classList.add('show');
 }
 
@@ -2126,10 +2133,19 @@ function doLogin() {
 
 // 회원가입
 function doSignup() {
+    const name     = document.getElementById('signupName').value.trim();
     const email    = document.getElementById('signupEmail').value.trim();
     const password = document.getElementById('signupPassword').value;
     document.getElementById('authError').classList.remove('show');
+
+    if (!name) {
+        showAuthError('auth/missing-name');
+        return;
+    }
+
+    // 계정 생성 후 Firebase 프로필에 이름 저장
     auth.createUserWithEmailAndPassword(email, password)
+        .then(cred => cred.user.updateProfile({ displayName: name }))
         .catch(err => showAuthError(err.code));
 }
 
@@ -2146,6 +2162,10 @@ auth.onAuthStateChanged(async (user) => {
 
         // 사이드바에 이메일 표시
         document.getElementById('sidebarUserEmail').textContent = user.email;
+
+        // 로그인한 사용자 이름으로 인사말 업데이트 (이름이 없으면 빈 인사말)
+        const firstName = user.displayName ? user.displayName.split(' ')[0] : '';
+        renderGreeting(firstName);
 
         // 로그인 모달 숨기기
         document.getElementById('authOverlay').classList.add('hidden');
