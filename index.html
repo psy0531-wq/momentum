@@ -706,6 +706,49 @@
         }
         .sidebar-logout-btn:hover { border-color: var(--red); color: var(--red); background: rgba(239,68,68,.05); }
 
+        /* ── 회원 탈퇴 버튼 ── */
+        .sidebar-delete-btn {
+            width: 100%; padding: 8px 14px; border-radius: var(--radius-sm);
+            background: none; border: none;
+            color: var(--muted); font-size: 12px; font-weight: 500;
+            font-family: inherit; cursor: pointer; transition: color .2s; text-align: left;
+            margin-top: 4px;
+        }
+        .sidebar-delete-btn:hover { color: var(--red); }
+
+        /* ── 회원 탈퇴 확인 팝업 ── */
+        .confirm-overlay {
+            position: fixed; inset: 0; z-index: 8500;
+            background: rgba(0,0,0,0.4);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .confirm-overlay.hidden { display: none; }
+        .confirm-card {
+            background: #fff; border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            padding: 32px 28px; width: 100%; max-width: 360px;
+        }
+        .confirm-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+        .confirm-desc  { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+        .confirm-warn  { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 20px; }
+        .confirm-btns  { display: flex; gap: 10px; }
+        .confirm-cancel-btn {
+            flex: 1; padding: 11px; border-radius: var(--radius-sm);
+            background: none; border: 1.5px solid var(--border);
+            color: var(--muted); font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer; transition: all .2s;
+        }
+        .confirm-cancel-btn:hover { border-color: var(--text); color: var(--text); }
+        .confirm-delete-btn {
+            flex: 1; padding: 11px; border-radius: var(--radius-sm);
+            background: var(--red); border: none;
+            color: #fff; font-size: 14px; font-weight: 700;
+            font-family: inherit; cursor: pointer; transition: background .2s;
+        }
+        .confirm-delete-btn:hover { background: #dc2626; }
+        .confirm-error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 16px; display: none; }
+        .confirm-error.show { display: block; }
+
         /* ── 이름 설정 팝업 ── */
         .set-name-overlay {
             position: fixed; inset: 0; z-index: 8000;
@@ -769,6 +812,20 @@
     </div>
 </div>
 
+<!-- 회원 탈퇴 확인 팝업 -->
+<div class="confirm-overlay hidden" id="deleteConfirmOverlay">
+    <div class="confirm-card">
+        <div class="confirm-title">Delete your account?</div>
+        <div class="confirm-desc">This will permanently delete your account and all your data — habits, to-dos, and goals. This cannot be undone.</div>
+        <div class="confirm-warn">⚠️ All your data will be lost forever.</div>
+        <div id="deleteConfirmError" class="confirm-error"></div>
+        <div class="confirm-btns">
+            <button class="confirm-cancel-btn" onclick="hideDeleteConfirm()">Cancel</button>
+            <button class="confirm-delete-btn" onclick="doDeleteAccount()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
 <!-- 이름 설정 팝업: 이름 없는 기존 계정 로그인 시 표시 -->
 <div class="set-name-overlay hidden" id="setNameOverlay">
     <div class="set-name-card">
@@ -813,7 +870,8 @@
     <!-- 로그인한 사용자 정보 + 로그아웃 버튼 -->
     <div class="sidebar-user">
         <div class="sidebar-user-email" id="sidebarUserEmail"></div>
-        <button class="sidebar-logout-btn" onclick="doLogout()">🚪 로그아웃</button>
+        <button class="sidebar-logout-btn" onclick="doLogout()">🚪 Sign Out</button>
+        <button class="sidebar-delete-btn" onclick="showDeleteConfirm()">Delete Account</button>
     </div>
 </aside>
 <div class="content">
@@ -2184,6 +2242,47 @@ function doSignup() {
 // 로그아웃
 function doLogout() {
     auth.signOut();
+}
+
+// 탈퇴 확인 팝업 열기/닫기
+function showDeleteConfirm() {
+    document.getElementById('deleteConfirmError').classList.remove('show');
+    document.getElementById('deleteConfirmOverlay').classList.remove('hidden');
+}
+function hideDeleteConfirm() {
+    document.getElementById('deleteConfirmOverlay').classList.add('hidden');
+}
+
+// 회원 탈퇴: Firestore 데이터 삭제 → Firebase 계정 삭제
+async function doDeleteAccount() {
+    const user = auth.currentUser;
+    const errEl = document.getElementById('deleteConfirmError');
+    errEl.classList.remove('show');
+
+    try {
+        // 1. Firestore에서 사용자 데이터 삭제
+        const dataRef = db.collection('users').doc(user.uid).collection('data');
+        const docs = await dataRef.get();
+        const deletions = docs.docs.map(d => d.ref.delete());
+        await Promise.all(deletions);
+
+        // 2. Firebase Auth 계정 삭제
+        await user.delete();
+
+        // 3. localStorage 초기화 (onAuthStateChanged가 처리하지만 명시적으로도 정리)
+        localStorage.removeItem('myflow_habits');
+        localStorage.removeItem('myflow_todos');
+        localStorage.removeItem('myflow_goals');
+
+    } catch (err) {
+        if (err.code === 'auth/requires-recent-login') {
+            // 로그인한 지 오래됐으면 재로그인 요청
+            errEl.textContent = 'For security, please sign out and sign in again before deleting your account.';
+        } else {
+            errEl.textContent = 'Something went wrong. Please try again.';
+        }
+        errEl.classList.add('show');
+    }
 }
 
 // 이름 저장 (기존 계정용)
