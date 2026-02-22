@@ -1502,6 +1502,8 @@ function renderHabits() {
         const periods  = lastNPeriods(numDots, freq);
         const curKey   = getPeriodKey(today(), freq);
         const doneKeys = new Set(h.completedDays.map(d => getPeriodKey(d, freq)));
+        // 실제로 체크했는지 여부 (주말 스킵은 시각적으로 완료 표시 안 함)
+        const visuallyDone = doneKeys.has(curKey);
         const tdLabel  = targetDayLabel(h);
 
         const dots = periods.map(date => {
@@ -1526,7 +1528,7 @@ function renderHabits() {
                                                           'Which day of the month? (each quarter)';
             return `
             <div class="habit-item editing">
-                <div class="habit-circle ${donePer ? 'checked' : ''}" onclick="toggleHabit(${h.id})">✓</div>
+                <div class="habit-circle ${visuallyDone ? 'checked' : ''}" onclick="toggleHabit(${h.id})">✓</div>
                 <div class="habit-info" style="flex:1">
                     <div class="habit-edit-row">
                         <input type="text" class="edit-input" id="edit-habit-${h.id}"
@@ -1552,8 +1554,8 @@ function renderHabits() {
 
         // ── NORMAL MODE ──
         return `
-        <div class="habit-item ${donePer ? 'done-today' : ''}">
-            <div class="habit-circle ${donePer ? 'checked' : ''}" onclick="toggleHabit(${h.id})" title="Mark complete">✓</div>
+        <div class="habit-item ${visuallyDone ? 'done-today' : ''}">
+            <div class="habit-circle ${visuallyDone ? 'checked' : ''}" onclick="toggleHabit(${h.id})" title="Mark complete">✓</div>
             <div class="habit-info">
                 <div class="habit-name-row">
                     <span class="habit-name">${safe(h.name)}</span>
