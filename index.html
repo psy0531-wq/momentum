@@ -628,32 +628,158 @@
         }
 
         /* ── Mobile responsive ── */
+        /* ── 모바일 전용 오버레이 요소 (기본 숨김) ── */
+        .mobile-fab {
+            position: fixed; bottom: 82px; right: 20px;
+            width: 52px; height: 52px; border-radius: 50%;
+            background: var(--primary); color: #fff; font-size: 28px; line-height: 1;
+            border: none; box-shadow: var(--shadow-lg); cursor: pointer;
+            display: none; z-index: 300;
+            align-items: center; justify-content: center;
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+        .mobile-fab:active { transform: scale(.9); }
+
+        /* 바텀시트 공통 배경 */
+        .mobile-sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 490; display: none; }
+        .mobile-sheet-backdrop.open { display: block; }
+
+        /* 슬라이드업 애니메이션 */
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        /* 인라인 폼 카드 → 모바일 바텀시트 변환 */
+        .add-form-card.sheet-open {
+            display: block !important; position: fixed;
+            bottom: 0; left: 0; right: 0; z-index: 500;
+            border-radius: 24px 24px 0 0; padding: 24px 20px 110px;
+            max-height: 82vh; overflow-y: auto;
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.22);
+            animation: slideUp .28s ease;
+        }
+
+        /* 캘린더 dot view 셀 */
+        .cal-dot-cell { cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; transition: background .1s; }
+        .cal-dot-cell:active { background: var(--primary-bg); }
+        .cal-dots-row { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
+        .cal-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+        .cal-dot.habit { background: var(--primary); }
+        .cal-dot.todo  { background: var(--green); }
+        .cal-dot.goal  { background: var(--amber); }
+
+        /* 캘린더 Day Detail 바텀시트 */
+        .cal-day-detail {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #fff; border-radius: 24px 24px 0 0; z-index: 600;
+            padding: 20px 20px 100px; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
+            animation: slideUp .28s ease;
+        }
+        .cal-day-detail.hidden { display: none; }
+        .cal-day-detail-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 590; }
+        .cal-day-detail-backdrop.hidden { display: none; }
+
+        /* Day Detail 내부 아이템 스타일 */
+        .detail-section-label { font-size: 11px; font-weight: 700; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin: 16px 0 8px; }
+        .detail-habit-item, .detail-todo-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 12px; border-radius: var(--radius-sm);
+            background: var(--bg); margin-bottom: 6px; cursor: pointer;
+        }
+        .detail-habit-item:active, .detail-todo-item:active { opacity: .7; }
+        .detail-circle {
+            width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+            border: 2px solid #cbd5e1; display: flex; align-items: center; justify-content: center;
+            font-size: 11px; color: transparent;
+        }
+        .detail-circle.done { background: var(--green); border-color: var(--green); color: #fff; }
+        .detail-item-text { font-size: 14px; font-weight: 500; color: var(--text); flex: 1; }
+        .detail-item-text.done { text-decoration: line-through; color: var(--muted); }
+        .detail-empty { text-align: center; padding: 16px; color: var(--muted); font-size: 13px; }
+
+        /* 모바일 프로필 바텀시트 */
+        .mobile-profile-sheet {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: #fff; border-radius: 24px 24px 0 0; z-index: 600;
+            padding: 24px 20px 110px; box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
+            animation: slideUp .28s ease;
+        }
+        .mobile-profile-sheet.hidden { display: none; }
+
+        /* 프로필 탭 - 데스크톱에서 숨김 */
+        .nav-item-profile { display: none; }
+
+        /* ── 768px 이하 반응형 레이아웃 ── */
         @media (max-width: 768px) {
+            /* 사이드바 → 하단 네비게이션 바 */
             .sidebar {
                 position: fixed; top: auto; left: 0; right: 0; bottom: 0;
                 width: 100%; height: auto; flex-direction: row;
-                padding: 8px 8px 12px; border-top: 1px solid var(--border);
+                padding: 6px 4px env(safe-area-inset-bottom, 8px);
+                border-top: 1px solid var(--border);
                 box-shadow: 0 -4px 20px rgba(124,111,248,.12); z-index: 200;
             }
-            .sidebar-logo, .sidebar-welcome { display: none; }
-            .sidebar-nav { flex-direction: row; gap: 2px; flex: 1; }
+            /* 사이드바에서 모바일 불필요한 요소 숨김 */
+            .sidebar-logo, .sidebar-welcome, .sidebar-user { display: none; }
+
+            /* 네비 아이템: 가로 배치 + 아이콘+텍스트 세로 */
+            .sidebar-nav { flex-direction: row; gap: 0; flex: 1; }
             .nav-item {
-                flex-direction: column; gap: 2px; padding: 6px 4px; font-size: 10px;
+                flex-direction: column; gap: 2px; padding: 6px 2px; font-size: 10px;
                 align-items: center; justify-content: center; flex: 1; border-radius: 10px;
             }
             .nav-item-icon { font-size: 20px; width: auto; }
+
+            /* 프로필 탭 모바일에서 표시 */
+            .nav-item-profile { display: flex; }
+
+            /* 콘텐츠 영역 전체폭 */
             .content { margin-left: 0; }
             .main { padding: 20px 16px 100px; max-width: 100%; }
+
+            /* 타이포그래피 */
             .section-title { font-size: 22px; }
             .stat-value { font-size: 24px; }
-            .todo-add-card .row2 { flex-wrap: wrap; }
-            .todo-add-card select { width: 100%; }
-            .todo-edit-row { flex-wrap: wrap; }
-            .cal-header { padding: 12px 12px; }
-            .cal-cell { padding: 3px 2px 4px; min-height: 58px; }
+
+            /* 터치 타깃 최소 44px 보장 */
+            .btn { min-height: 44px; padding-top: 10px; padding-bottom: 10px; }
+            input[type="text"], input[type="email"], input[type="password"],
+            input[type="date"], input[type="time"], select { min-height: 44px; }
+
+            /* 입력 폼 전체폭 + 줄바꿈 */
+            .input-row { flex-wrap: wrap; gap: 8px; }
+            .input-row input, .input-row select { width: 100%; min-width: 0; }
+            .todo-add-card .row2 { flex-wrap: wrap; gap: 8px; }
+            .todo-add-card select, .todo-add-card .cat-input { width: 100%; flex: none; }
+            .todo-edit-row { flex-wrap: wrap; gap: 8px; }
+
+            /* 인라인 add form 카드 숨김 → FAB + 바텀시트로 대체 */
+            #habitAddCard, #todoAddCard, #goalAddCard { display: none; }
+
+            /* FAB 버튼 표시 */
+            .mobile-fab { display: flex; }
+
+            /* 토스트 바텀 네비 위로 올리기 */
+            .toast { bottom: 88px; }
+
+            /* 인증 화면 모바일 최적화 */
+            .auth-card { padding: 28px 20px; max-height: 92vh; overflow-y: auto; }
+
+            /* 캘린더 헤더 */
+            .cal-header { padding: 10px 12px; }
+            .cal-month-label { font-size: 14px; }
+
+            /* 캘린더 dot view는 JS가 처리하므로 기본 셀 최소화 */
+            .cal-cell { padding: 4px 2px; min-height: 50px; overflow: hidden; }
             .cal-hname { font-size: 8px; }
             .cal-circle { width: 9px; height: 9px; font-size: 5px; }
-            .cal-month-label { font-size: 14px; }
+
+            /* 목표 카드 마일스톤 입력 */
+            .ms-add-row { flex-wrap: wrap; gap: 8px; }
+            .ms-add-row input { width: 100%; }
+
+            /* 필터 칩 간격 */
+            .filter-row { gap: 6px; }
+            .filter-chip { padding: 8px 14px; font-size: 13px; }
         }
 
         /* ── 로그인 모달 ── */
@@ -702,12 +828,47 @@
         .auth-error { background: #fee2e2; color: #dc2626; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
         .auth-error.show { display: block; }
 
+        /* ── Google 로그인 버튼 ── */
+        .auth-google-btn {
+            width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+            background: #fff; border: 1.5px solid var(--border);
+            font-size: 14px; font-weight: 600; font-family: inherit;
+            cursor: pointer; transition: all .2s;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            color: var(--text); margin-bottom: 14px;
+        }
+        .auth-google-btn:hover {
+            border-color: #4285F4;
+            box-shadow: 0 0 0 3px rgba(66,133,244,0.12);
+            background: #fafafa;
+        }
+        /* ── "or" 구분선 ── */
+        .auth-divider {
+            display: flex; align-items: center; gap: 12px;
+            margin: 0 0 14px; color: var(--muted);
+            font-size: 12px; font-weight: 500;
+        }
+        .auth-divider::before, .auth-divider::after {
+            content: ''; flex: 1; height: 1px; background: var(--border);
+        }
+
         /* ── 사이드바 사용자 영역 ── */
         .sidebar-user {
             margin-top: auto; padding: 14px 6px 0;
             border-top: 1px solid var(--border);
         }
-        .sidebar-user-email { font-size: 11px; color: var(--muted); font-weight: 500; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* 프로필 사진 + 이름/이메일 한 줄 묶음 */
+        .sidebar-user-info {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+        }
+        .sidebar-user-photo {
+            width: 32px; height: 32px; border-radius: 50%;
+            object-fit: cover; flex-shrink: 0;
+            border: 1.5px solid var(--border);
+        }
+        .sidebar-user-text { min-width: 0; }
+        .sidebar-user-name { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sidebar-user-email { font-size: 11px; color: var(--muted); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .sidebar-logout-btn {
             width: 100%; padding: 9px 14px; border-radius: var(--radius-sm);
             background: none; border: 1.5px solid var(--border);
@@ -777,6 +938,40 @@
 </head>
 <body>
 
+<!-- ── 모바일 전용 UI 요소 ── -->
+<!-- FAB: 모바일에서 항목 추가 버튼 -->
+<button class="mobile-fab" id="mobileFab" onclick="openCurrentSectionForm()" aria-label="Add item">+</button>
+
+<!-- 바텀시트 공통 배경 (폼 시트 & 프로필 시트에서 공유) -->
+<div class="mobile-sheet-backdrop" id="mobileSheetBackdrop" onclick="closeMobileSheets()"></div>
+
+<!-- 캘린더 Day Detail: 날짜 탭 시 나타나는 바텀시트 -->
+<div class="cal-day-detail-backdrop hidden" id="calDayDetailBackdrop" onclick="closeDayDetail()"></div>
+<div class="cal-day-detail hidden" id="calDayDetail">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div style="font-size:17px;font-weight:800;color:var(--text);" id="calDayDetailTitle"></div>
+        <button onclick="closeDayDetail()" style="width:32px;height:32px;background:var(--bg);border:none;border-radius:50%;cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+    <div id="calDayDetailContent"></div>
+</div>
+
+<!-- 모바일 프로필 바텀시트 -->
+<div class="mobile-profile-sheet hidden" id="mobileProfileSheet">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:800;color:var(--text);">Account</div>
+        <button onclick="closeMobileProfile()" style="width:32px;height:32px;background:var(--bg);border:none;border-radius:50%;cursor:pointer;font-size:18px;color:var(--muted);display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;padding:14px;background:var(--bg);border-radius:var(--radius);margin-bottom:16px;">
+        <img id="mobileProfilePhoto" src="" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;display:none;border:2px solid var(--border);">
+        <div>
+            <div id="mobileProfileName" style="font-weight:700;font-size:15px;color:var(--text);"></div>
+            <div id="mobileProfileEmail" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
+        </div>
+    </div>
+    <button class="sidebar-logout-btn" style="margin-bottom:8px;" onclick="doLogout();closeMobileProfile();">🚪 Sign Out</button>
+    <button class="sidebar-delete-btn" onclick="closeMobileProfile();showDeleteConfirm();">Delete Account</button>
+</div>
+
 <!-- 로그인 모달: 로그인 전에 앱 위를 덮는 화면 -->
 <div class="auth-overlay" id="authOverlay">
     <div class="auth-card">
@@ -789,6 +984,17 @@
         <div id="loginForm">
             <div class="auth-title">Welcome back!</div>
             <div class="auth-sub">Sign in to continue</div>
+            <!-- Google 로그인 버튼 -->
+            <button class="auth-google-btn" onclick="doGoogleSignIn()">
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z"/>
+                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.859-3.048.859-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                    <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>
+                </svg>
+                Continue with Google
+            </button>
+            <div class="auth-divider">or sign in with email</div>
             <div class="auth-field">
                 <label>EMAIL</label>
                 <input type="email" id="loginEmail" placeholder="your@email.com">
@@ -804,6 +1010,17 @@
         <div id="signupForm" style="display:none">
             <div class="auth-title">Get started with Momentum</div>
             <div class="auth-sub">Create your free account</div>
+            <!-- Google 회원가입 버튼 -->
+            <button class="auth-google-btn" onclick="doGoogleSignIn()">
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+                    <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908C16.658 14.013 17.64 11.705 17.64 9.2z"/>
+                    <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.859-3.048.859-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z"/>
+                    <path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+                    <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.163 6.656 3.58 9 3.58z"/>
+                </svg>
+                Sign up with Google
+            </button>
+            <div class="auth-divider">or sign up with email</div>
             <div class="auth-field">
                 <label>FIRST NAME</label>
                 <input type="text" id="signupName" placeholder="Your first name">
@@ -876,10 +1093,21 @@
         <div class="nav-item" id="tab-goals" onclick="showSection('goals')">
             <span class="nav-item-icon">🎯</span>Goals
         </div>
+        <!-- 모바일 전용: 프로필/로그아웃 탭 -->
+        <div class="nav-item nav-item-profile" id="tab-profile" onclick="showMobileProfile()">
+            <span class="nav-item-icon">👤</span>Profile
+        </div>
     </nav>
     <!-- 로그인한 사용자 정보 + 로그아웃 버튼 -->
     <div class="sidebar-user">
-        <div class="sidebar-user-email" id="sidebarUserEmail"></div>
+        <!-- 프로필 사진 + 이름/이메일 (Google 로그인 시 사진 표시) -->
+        <div class="sidebar-user-info">
+            <img class="sidebar-user-photo" id="sidebarUserPhoto" src="" alt="profile" style="display:none">
+            <div class="sidebar-user-text">
+                <div class="sidebar-user-name" id="sidebarUserName"></div>
+                <div class="sidebar-user-email" id="sidebarUserEmail"></div>
+            </div>
+        </div>
         <button class="sidebar-logout-btn" onclick="doLogout()">🚪 Sign Out</button>
         <button class="sidebar-delete-btn" onclick="showDeleteConfirm()">Delete Account</button>
     </div>
@@ -923,7 +1151,7 @@
             </div>
         </div>
 
-        <div class="card">
+        <div class="card add-form-card" id="habitAddCard">
             <div class="input-row">
                 <input type="text" id="habitInput"
                        placeholder="Add a habit (e.g. Drink 8 glasses of water)"
@@ -955,7 +1183,7 @@
         <h1 class="section-title">To-Do List</h1>
         <p class="section-sub">Stay organized and get things done</p>
 
-        <div class="todo-add-card">
+        <div class="todo-add-card add-form-card" id="todoAddCard">
             <div class="input-row">
                 <input type="text" id="todoInput"
                        placeholder="What needs to be done?"
@@ -995,7 +1223,7 @@
         <h1 class="section-title">Goals</h1>
         <p class="section-sub">Dream big, break it down, make it happen</p>
 
-        <div class="card">
+        <div class="card add-form-card" id="goalAddCard">
             <div class="input-row">
                 <input type="text" id="goalInput"
                        placeholder="Set a new goal (e.g. Run a 5K race)"
@@ -1179,6 +1407,9 @@ function showSection(name) {
     document.getElementById('section-' + name).classList.add('active');
     document.getElementById('tab-' + name).classList.add('active');
     if (name === 'calendar') renderCalendar();
+    // 모바일: 캘린더에서는 FAB 숨기기 (캘린더엔 add form 없음)
+    const fab = document.getElementById('mobileFab');
+    if (fab) fab.style.display = (name === 'calendar') ? 'none' : '';
 }
 
 /* ════════════════════════════════════════════════════
@@ -1425,6 +1656,7 @@ function addHabit() {
     inp.value = '';
     document.getElementById('habitFreq').value = 'daily';
     document.getElementById('targetDayRow').style.display = 'none';
+    closeMobileAddForm(); // 모바일 바텀시트 닫기
     renderHabits();
     toast('Habit added! ✨');
 }
@@ -1636,6 +1868,7 @@ function addTodo() {
     document.getElementById('todoCategory').value = '';
     document.getElementById('todoDueDate').value  = '';
     document.getElementById('todoDueTime').value  = '';
+    closeMobileAddForm(); // 모바일 바텀시트 닫기
     renderTodos();
     toast('Task added! 📋');
 }
@@ -1794,6 +2027,7 @@ function addGoal() {
     save('goals', goals);
     inp.value = '';
     document.getElementById('goalTargetDate').value = '';
+    closeMobileAddForm(); // 모바일 바텀시트 닫기
     renderGoals();
     toast('Goal created! Now add milestones 🎯');
 }
@@ -2102,6 +2336,8 @@ function renderCalendar() {
         cellsHtml += `<div class="cal-cell cal-empty"></div>`;
     }
 
+    const isMobile = window.innerWidth <= 768;
+
     // ── Day cells ──
     for (let d = 1; d <= daysInMonth; d++) {
         const mm      = String(calMonth + 1).padStart(2, '0');
@@ -2115,52 +2351,68 @@ function renderCalendar() {
             ? `<div class="cal-day-num"><span class="is-today">${d}</span></div>`
             : `<div class="cal-day-num">${d}</div>`;
 
-        // ── Habits ──
-        let habitsInCell = '';
-        if (habits.length === 0) {
-            habitsInCell = `<div class="cal-no-habits">No habits</div>`;
+        if (isMobile) {
+            // ── 모바일: 날짜 + 색깔 dot 표시, 탭 시 Day Detail 열기 ──
+            const hasHabits = habitDoneKeys.some(h => shouldShowHabitOnDate(h, dateStr));
+            const hasTodos  = todos.some(t => t.dueDate === dateStr);
+            const hasGoals  = goals.some(g => g.targetDate === dateStr);
+            const dots = [
+                hasHabits ? `<div class="cal-dot habit"></div>` : '',
+                hasTodos  ? `<div class="cal-dot todo"></div>`  : '',
+                hasGoals  ? `<div class="cal-dot goal"></div>`  : '',
+            ].join('');
+            cellsHtml += `
+            <div class="cal-cell cal-dot-cell ${isToday ? 'cal-today' : (isPast ? 'cal-past' : '')}"
+                 onclick="showDayDetail('${dateStr}')">
+                ${dayNumHtml}
+                <div class="cal-dots-row">${dots}</div>
+            </div>`;
         } else {
-            habitsInCell = habitDoneKeys.filter(h => shouldShowHabitOnDate(h, dateStr)).map(h => {
-                const key    = getPeriodKey(dateStr, h.freq);
-                const isDone = h.keys.has(key);
-                return `
-                <div class="cal-habit ${isDone ? 'done' : ''}"
-                     onclick="calToggleHabit(${h.id}, '${dateStr}')"
-                     title="${safeAttr(h.name)} — click to toggle">
-                    <div class="cal-circle ${isDone ? 'done' : ''}">✓</div>
-                    <span class="cal-hname">🔥 ${safe(h.name)}</span>
-                </div>`;
-            }).join('');
+            // ── 데스크톱: 기존 풀 렌더링 ──
+            // Habits
+            let habitsInCell = '';
+            if (habits.length === 0) {
+                habitsInCell = `<div class="cal-no-habits">No habits</div>`;
+            } else {
+                habitsInCell = habitDoneKeys.filter(h => shouldShowHabitOnDate(h, dateStr)).map(h => {
+                    const key    = getPeriodKey(dateStr, h.freq);
+                    const isDone = h.keys.has(key);
+                    return `
+                    <div class="cal-habit ${isDone ? 'done' : ''}"
+                         onclick="calToggleHabit(${h.id}, '${dateStr}')"
+                         title="${safeAttr(h.name)} — click to toggle">
+                        <div class="cal-circle ${isDone ? 'done' : ''}">✓</div>
+                        <span class="cal-hname">🔥 ${safe(h.name)}</span>
+                    </div>`;
+                }).join('');
+            }
+            // To-Dos (시간순 정렬)
+            const todosForCell = todos.filter(t => t.dueDate === dateStr).sort((a, b) => {
+                if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
+                if (a.dueTime) return -1;
+                if (b.dueTime) return  1;
+                return 0;
+            });
+            const todosInCell = todosForCell.map(t => `
+                    <div class="cal-todo ${t.done ? 'is-done' : ''}"
+                         onclick="calToggleTodo(${t.id})"
+                         title="${safeAttr(t.text)} — click to toggle">
+                        <div class="cal-circle ${t.done ? 'done' : ''}">✓</div>
+                        <span class="cal-hname">${t.dueTime ? `<span class="cal-todo-time">${formatTime(t.dueTime)}</span> ` : ''}✅ ${safe(t.text)}</span>
+                    </div>`).join('');
+            // Goals
+            const goalsInCell = goals.filter(g => g.targetDate === dateStr).map(g => `
+                    <div class="cal-goal" title="${safeAttr(g.title)}">
+                        <div class="cal-circle"></div>
+                        <span class="cal-hname">🎯 ${safe(g.title)}</span>
+                    </div>`).join('');
+
+            cellsHtml += `
+            <div class="cal-cell ${isToday ? 'cal-today' : (isPast ? 'cal-past' : '')}">
+                ${dayNumHtml}
+                <div class="cal-habits-list">${habitsInCell}${todosInCell}${goalsInCell}</div>
+            </div>`;
         }
-
-        // ── To-Dos with matching due date ──
-        // 시간 있는 항목 먼저 (시간순), 시간 없는 항목은 뒤에
-        const todosForCell = todos.filter(t => t.dueDate === dateStr).sort((a, b) => {
-            if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
-            if (a.dueTime) return -1;
-            if (b.dueTime) return  1;
-            return 0;
-        });
-        const todosInCell = todosForCell.map(t => `
-                <div class="cal-todo ${t.done ? 'is-done' : ''}"
-                     onclick="calToggleTodo(${t.id})"
-                     title="${safeAttr(t.text)} — click to toggle">
-                    <div class="cal-circle ${t.done ? 'done' : ''}">✓</div>
-                    <span class="cal-hname">${t.dueTime ? `<span class="cal-todo-time">${formatTime(t.dueTime)}</span> ` : ''}✅ ${safe(t.text)}</span>
-                </div>`).join('');
-
-        // ── Goals with matching target date ──
-        const goalsInCell = goals.filter(g => g.targetDate === dateStr).map(g => `
-                <div class="cal-goal" title="${safeAttr(g.title)}">
-                    <div class="cal-circle"></div>
-                    <span class="cal-hname">🎯 ${safe(g.title)}</span>
-                </div>`).join('');
-
-        cellsHtml += `
-        <div class="cal-cell ${isToday ? 'cal-today' : (isPast ? 'cal-past' : '')}">
-            ${dayNumHtml}
-            <div class="cal-habits-list">${habitsInCell}${todosInCell}${goalsInCell}</div>
-        </div>`;
     }
 
     // ── Trailing empty cells to complete the last row ──
@@ -2266,10 +2518,28 @@ function showAuthError(code) {
         'auth/email-already-in-use':'This email is already in use.',
         'auth/weak-password':       'Password must be at least 6 characters.',
         'auth/invalid-credential':  'Incorrect email or password.',
+        // Google 로그인 관련 에러
+        'auth/account-exists-with-different-credential': 'An account already exists with this email. Try signing in with email and password.',
+        'auth/popup-blocked': 'Pop-up was blocked by your browser. Please allow pop-ups for this site.',
     };
     const el = document.getElementById('authError');
     el.textContent = messages[code] || 'Something went wrong. Please try again.';
     el.classList.add('show');
+}
+
+// Google 로그인
+function doGoogleSignIn() {
+    document.getElementById('authError').classList.remove('show');
+    const provider = new firebase.auth.GoogleAuthProvider();
+    // 매번 계정 선택 화면이 표시되도록 설정 (여러 구글 계정 보유 시 유용)
+    provider.setCustomParameters({ prompt: 'select_account' });
+    auth.signInWithPopup(provider)
+        .catch(err => {
+            // 팝업을 닫은 경우는 에러 표시 없이 조용히 처리
+            if (err.code === 'auth/popup-closed-by-user' ||
+                err.code === 'auth/cancelled-popup-request') return;
+            showAuthError(err.code);
+        });
 }
 
 // 로그인
@@ -2380,15 +2650,32 @@ auth.onAuthStateChanged(async (user) => {
         // 로그인됨
         currentUid = user.uid;
 
-        // 사이드바에 이메일 표시
+        // 사이드바 이메일 표시
         document.getElementById('sidebarUserEmail').textContent = user.email;
+
+        // 사이드바 이름 표시 (Google 계정이면 displayName이 자동 설정됨)
+        const nameEl = document.getElementById('sidebarUserName');
+        if (nameEl) nameEl.textContent = user.displayName || '';
+
+        // 사이드바 프로필 사진 표시 (Google 계정은 photoURL이 제공됨)
+        const photoEl = document.getElementById('sidebarUserPhoto');
+        if (photoEl) {
+            if (user.photoURL) {
+                photoEl.src = user.photoURL;
+                photoEl.style.display = 'block';
+            } else {
+                photoEl.style.display = 'none';
+            }
+        }
 
         // 로그인한 사용자 이름으로 인사말 업데이트 (이름이 없으면 빈 인사말)
         const firstName = user.displayName ? user.displayName.split(' ')[0] : '';
         renderGreeting(firstName);
 
-        // 이름이 없는 기존 계정이면 이름 설정 팝업 표시
-        if (!user.displayName) {
+        // 이름이 없는 이메일 계정이면 이름 설정 팝업 표시
+        // (Google 계정은 displayName이 자동으로 있으므로 팝업 불필요)
+        const isGoogleUser = user.providerData.some(p => p.providerId === 'google.com');
+        if (!user.displayName && !isGoogleUser) {
             document.getElementById('setNameOverlay').classList.remove('hidden');
         }
 
@@ -2401,6 +2688,12 @@ auth.onAuthStateChanged(async (user) => {
         // 로그아웃됨
         currentUid = null;
 
+        // 사이드바 프로필 초기화
+        const photoEl = document.getElementById('sidebarUserPhoto');
+        if (photoEl) { photoEl.src = ''; photoEl.style.display = 'none'; }
+        const nameEl = document.getElementById('sidebarUserName');
+        if (nameEl) nameEl.textContent = '';
+
         // localStorage 초기화 (다른 사람이 같은 기기 쓸 때 데이터 노출 방지)
         localStorage.removeItem('myflow_habits');
         localStorage.removeItem('myflow_todos');
@@ -2410,6 +2703,152 @@ auth.onAuthStateChanged(async (user) => {
 
         // 로그인 모달 표시
         document.getElementById('authOverlay').classList.remove('hidden');
+    }
+});
+
+/* ════════════════════════════════════════════════════
+   모바일 반응형 기능
+   ════════════════════════════════════════════════════ */
+
+// 모든 모바일 바텀시트(폼 + 프로필)를 닫는 공통 함수
+function closeMobileSheets() {
+    closeMobileAddForm();
+    closeMobileProfile();
+}
+
+/* ── 모바일 폼 바텀시트 ── */
+// 현재 활성 섹션에 맞는 폼을 바텀시트로 열기
+function openCurrentSectionForm() {
+    const activeEl = document.querySelector('.section.active');
+    if (!activeEl) return;
+    const section = activeEl.id.replace('section-', '');
+    if (section === 'calendar') return; // 캘린더엔 add form 없음
+    const map = { habits: 'habitAddCard', todos: 'todoAddCard', goals: 'goalAddCard' };
+    const cardId = map[section];
+    if (!cardId) return;
+    const card = document.getElementById(cardId);
+    card.classList.add('sheet-open');
+    document.getElementById('mobileSheetBackdrop').classList.add('open');
+    // 포커스: 첫 번째 텍스트 입력에 자동 포커스
+    setTimeout(() => {
+        const inp = card.querySelector('input[type="text"]');
+        if (inp) inp.focus();
+    }, 300);
+}
+
+// 폼 바텀시트 닫기
+function closeMobileAddForm() {
+    ['habitAddCard', 'todoAddCard', 'goalAddCard'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('sheet-open');
+    });
+    document.getElementById('mobileSheetBackdrop').classList.remove('open');
+}
+
+/* ── 모바일 프로필 바텀시트 ── */
+function showMobileProfile() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+    // 이름/이메일 채우기
+    document.getElementById('mobileProfileName').textContent = user.displayName || '';
+    document.getElementById('mobileProfileEmail').textContent = user.email || '';
+    // 프로필 사진 (Google 계정이면 photoURL 있음)
+    const photo = document.getElementById('mobileProfilePhoto');
+    if (user.photoURL) { photo.src = user.photoURL; photo.style.display = 'block'; }
+    else photo.style.display = 'none';
+    // 시트 열기
+    document.getElementById('mobileProfileSheet').classList.remove('hidden');
+    document.getElementById('mobileSheetBackdrop').classList.add('open');
+}
+
+function closeMobileProfile() {
+    document.getElementById('mobileProfileSheet').classList.add('hidden');
+    document.getElementById('mobileSheetBackdrop').classList.remove('open');
+}
+
+/* ── 캘린더 Day Detail 바텀시트 ── */
+function showDayDetail(dateStr) {
+    // 데스크톱에서는 무시
+    if (window.innerWidth > 768) return;
+    // 날짜 타이틀 포맷
+    const d = new Date(dateStr + 'T12:00:00');
+    document.getElementById('calDayDetailTitle').textContent =
+        d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    // 내용 렌더링
+    renderDayDetailContent(dateStr);
+    // 시트 열기
+    document.getElementById('calDayDetailBackdrop').classList.remove('hidden');
+    document.getElementById('calDayDetail').classList.remove('hidden');
+}
+
+function closeDayDetail() {
+    document.getElementById('calDayDetailBackdrop').classList.add('hidden');
+    document.getElementById('calDayDetail').classList.add('hidden');
+}
+
+// Day Detail 내용 렌더링 (해당 날짜의 habits, todos, goals)
+function renderDayDetailContent(dateStr) {
+    const container = document.getElementById('calDayDetailContent');
+    let html = '';
+
+    // ── Habits ──
+    const dayHabits = habits.filter(h => {
+        const freq = h.freq || 'daily';
+        return shouldShowHabitOnDate(h, dateStr);
+    });
+    html += `<div class="detail-section-label">🔥 Habits</div>`;
+    if (dayHabits.length === 0) {
+        html += `<div class="detail-empty">No habits scheduled for this day</div>`;
+    } else {
+        dayHabits.forEach(h => {
+            const freq = h.freq || 'daily';
+            const key  = getPeriodKey(dateStr, freq);
+            const done = h.completedDays.some(d => getPeriodKey(d, freq) === key);
+            html += `<div class="detail-habit-item" onclick="calToggleHabit(${h.id},'${dateStr}');renderDayDetailContent('${dateStr}')">
+                <div class="detail-circle ${done ? 'done' : ''}">✓</div>
+                <div class="detail-item-text ${done ? 'done' : ''}">${safe(h.name)}</div>
+            </div>`;
+        });
+    }
+
+    // ── To-Dos ──
+    const dayTodos = todos.filter(t => t.dueDate === dateStr);
+    html += `<div class="detail-section-label">✅ To-Dos</div>`;
+    if (dayTodos.length === 0) {
+        html += `<div class="detail-empty">No tasks due this day</div>`;
+    } else {
+        dayTodos.forEach(t => {
+            const timeStr = t.dueTime
+                ? new Date(`2000-01-01T${t.dueTime}`).toLocaleTimeString('en-US', {hour:'numeric',minute:'2-digit'})
+                : '';
+            html += `<div class="detail-todo-item" onclick="calToggleTodo(${t.id});renderDayDetailContent('${dateStr}')">
+                <div class="detail-circle ${t.done ? 'done' : ''}">✓</div>
+                <div class="detail-item-text ${t.done ? 'done' : ''}">${safe(t.text)}${timeStr ? ` <span style="font-size:11px;color:var(--muted);">· ${timeStr}</span>` : ''}</div>
+            </div>`;
+        });
+    }
+
+    // ── Goals (마감일 기준) ──
+    const dayGoals = goals.filter(g => g.targetDate === dateStr);
+    if (dayGoals.length > 0) {
+        html += `<div class="detail-section-label">🎯 Goals Due</div>`;
+        dayGoals.forEach(g => {
+            const pct = g.milestones.length === 0 ? 0 :
+                Math.round(g.milestones.filter(m => m.done).length / g.milestones.length * 100);
+            html += `<div style="padding:10px 12px;background:var(--bg);border-radius:var(--radius-sm);margin-bottom:6px;">
+                <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;">${safe(g.title)}</div>
+                <div style="font-size:12px;color:var(--muted);">${pct}% complete</div>
+            </div>`;
+        });
+    }
+
+    container.innerHTML = html;
+}
+
+// 창 크기 변경 시 캘린더 재렌더 (도트/데스크톱 뷰 전환)
+window.addEventListener('resize', () => {
+    if (document.getElementById('section-calendar').classList.contains('active')) {
+        renderCalendar();
     }
 });
 
