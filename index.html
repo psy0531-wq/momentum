@@ -614,6 +614,11 @@
         }
         .cal-todo:hover { background: var(--bg); }
         .cal-todo.is-done .cal-hname { text-decoration: line-through; opacity: .6; }
+        .cal-todo-time {
+            font-size: 8px; font-weight: 700; color: var(--primary);
+            background: var(--primary-bg); border-radius: 3px;
+            padding: 1px 3px; white-space: nowrap; flex-shrink: 0;
+        }
 
         /* ── Calendar: Goal items ── */
         .cal-goal {
@@ -966,10 +971,13 @@
                        placeholder="Category (optional)">
                 <button class="btn btn-primary" onclick="addTodo()">+ Add</button>
             </div>
-            <div class="target-day-row" style="margin-top:8px">
+            <div class="target-day-row" style="margin-top:8px;flex-wrap:wrap;gap:8px">
                 <label style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap">📅 Due date (optional)</label>
                 <input type="date" id="todoDueDate"
-                       style="flex:1;font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card);min-width:0">
+                       style="flex:1;font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card);min-width:120px">
+                <label style="font-size:13px;font-weight:600;color:var(--muted);white-space:nowrap">⏰ Time (optional)</label>
+                <input type="time" id="todoDueTime"
+                       style="font-size:13px;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card)">
             </div>
         </div>
 
@@ -1044,7 +1052,10 @@ function save(key, data) {
     if (currentUid) {
         db.collection('users').doc(currentUid).collection('data').doc(key)
             .set({ items: data })
-            .catch(err => console.error('Firestore 저장 실패:', err));
+            .catch(err => {
+                // Firestore 저장 실패 시 콘솔에 상세 기록 (보안 규칙 문제 등 진단용)
+                console.error('Firestore 저장 실패 [' + key + ']:', err.code, err.message);
+            });
     }
 }
 
@@ -1063,6 +1074,14 @@ async function loadFromFirestore(uid) {
             if (doc.exists) {
                 // Firestore 데이터를 localStorage에 덮어쓰기 (동기화)
                 localStorage.setItem('myflow_' + key, JSON.stringify(doc.data().items));
+            } else {
+                // Firestore에 데이터가 없는데 localStorage에는 있으면 → Firestore에 업로드 (복구)
+                const localItems = load(key);
+                if (localItems.length > 0) {
+                    db.collection('users').doc(uid).collection('data').doc(key)
+                        .set({ items: localItems })
+                        .catch(err => console.error('Firestore 복구 업로드 실패:', key, err));
+                }
             }
         }
         // 데이터 로드 후 화면 다시 그리기
@@ -1075,6 +1094,15 @@ async function loadFromFirestore(uid) {
         renderCalendar();
     } catch (err) {
         console.error('Firestore 불러오기 실패:', err);
+        // 에러 시에도 로컬 데이터라도 화면에 표시
+        habits = load('habits');
+        todos  = load('todos');
+        goals  = load('goals');
+        renderHabits();
+        renderTodos();
+        renderGoals();
+        renderCalendar();
+        toast('⚠️ Cloud sync failed. Showing local data.');
     }
 }
 
@@ -1119,6 +1147,15 @@ function formatDate(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr + 'T12:00:00');
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// "14:30" → "2:30 PM"
+function formatTime(timeStr) {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':').map(Number);
+    const ampm   = h >= 12 ? 'PM' : 'AM';
+    const hour12 = h % 12 || 12;
+    return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
 }
 
 document.getElementById('dateBadge').textContent =
@@ -1591,12 +1628,14 @@ function addTodo() {
         priority: document.getElementById('todoPriority').value,
         category: document.getElementById('todoCategory').value.trim(),
         dueDate:  document.getElementById('todoDueDate').value || null,
+        dueTime:  document.getElementById('todoDueTime').value  || null,
         done: false
     });
     save('todos', todos);
     inp.value = '';
     document.getElementById('todoCategory').value = '';
-    document.getElementById('todoDueDate').value = '';
+    document.getElementById('todoDueDate').value  = '';
+    document.getElementById('todoDueTime').value  = '';
     renderTodos();
     toast('Task added! 📋');
 }
@@ -1631,6 +1670,7 @@ function saveTodo(id) {
     const priSel  = document.getElementById('edit-todo-pri-' + id);
     const catInp  = document.getElementById('edit-todo-cat-' + id);
     const dateInp = document.getElementById('edit-todo-date-' + id);
+    const timeInp = document.getElementById('edit-todo-time-' + id);
     if (!textInp) return;
     const newText = textInp.value.trim();
     if (!newText) { textInp.focus(); return; }
@@ -1640,6 +1680,7 @@ function saveTodo(id) {
         t.priority = priSel.value;
         t.category = catInp.value.trim();
         if (dateInp) t.dueDate = dateInp.value || null;
+        if (timeInp) t.dueTime = timeInp.value  || null;
         save('todos', todos);
     }
     editingTodoId = null;
@@ -1699,11 +1740,15 @@ function renderTodos() {
                         <button class="btn-save" onclick="saveTodo(${t.id})">Save</button>
                         <button class="btn-cancel" onclick="cancelEditTodo()">Cancel</button>
                     </div>
-                    <div class="target-day-row" style="margin-top:6px">
+                    <div class="target-day-row" style="margin-top:6px;flex-wrap:wrap;gap:6px">
                         <label style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">📅 Due date</label>
                         <input type="date" id="edit-todo-date-${t.id}"
                                value="${safeAttr(t.dueDate || '')}"
-                               style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card);min-width:0">
+                               style="flex:1;font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card);min-width:100px">
+                        <label style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap">⏰ Time</label>
+                        <input type="time" id="edit-todo-time-${t.id}"
+                               value="${safeAttr(t.dueTime || '')}"
+                               style="font-size:12px;padding:6px 8px;border:1.5px solid var(--border);border-radius:8px;color:var(--text);background:var(--card)">
                     </div>
                 </div>
             </div>`;
@@ -1718,7 +1763,7 @@ function renderTodos() {
                 <div class="badge-row">
                     <span class="badge badge-${t.priority}">${t.priority}</span>
                     ${t.category ? `<span class="badge badge-cat">${safe(t.category)}</span>` : ''}
-                    ${t.dueDate  ? `<span class="badge badge-date">📅 ${formatDate(t.dueDate)}</span>` : ''}
+                    ${t.dueDate  ? `<span class="badge badge-date">📅 ${formatDate(t.dueDate)}${t.dueTime ? ' · ' + formatTime(t.dueTime) : ''}</span>` : ''}
                 </div>
             </div>
             <button class="btn btn-edit" onclick="editTodo(${t.id})" title="Edit task">✏</button>
@@ -2089,12 +2134,19 @@ function renderCalendar() {
         }
 
         // ── To-Dos with matching due date ──
-        const todosInCell = todos.filter(t => t.dueDate === dateStr).map(t => `
+        // 시간 있는 항목 먼저 (시간순), 시간 없는 항목은 뒤에
+        const todosForCell = todos.filter(t => t.dueDate === dateStr).sort((a, b) => {
+            if (a.dueTime && b.dueTime) return a.dueTime.localeCompare(b.dueTime);
+            if (a.dueTime) return -1;
+            if (b.dueTime) return  1;
+            return 0;
+        });
+        const todosInCell = todosForCell.map(t => `
                 <div class="cal-todo ${t.done ? 'is-done' : ''}"
                      onclick="calToggleTodo(${t.id})"
                      title="${safeAttr(t.text)} — click to toggle">
                     <div class="cal-circle ${t.done ? 'done' : ''}">✓</div>
-                    <span class="cal-hname">✅ ${safe(t.text)}</span>
+                    <span class="cal-hname">${t.dueTime ? `<span class="cal-todo-time">${formatTime(t.dueTime)}</span> ` : ''}✅ ${safe(t.text)}</span>
                 </div>`).join('');
 
         // ── Goals with matching target date ──
